@@ -1,25 +1,11 @@
-/* eslint-disable react-hooks/rules-of-hooks */
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Loading } from '@/components/ui/loading'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts'
 
 // Kiểu dữ liệu cho dashboard summary
 interface DashboardSummary {
@@ -35,6 +21,7 @@ interface DashboardSummary {
 }
 
 export default function AdminDashboardContent() {
+  // Sử dụng React Query để fetch dữ liệu
   const { data, isLoading, error } = useQuery<{ data: DashboardSummary }>({
     queryKey: ['adminDashboardSummary'],
     queryFn: async () => {
@@ -44,18 +31,10 @@ export default function AdminDashboardContent() {
       }
       return response.json()
     },
-    refetchInterval: 60000, // Refetch mỗi 1 phút
   })
 
-  const [revenueData, setRevenueData] = useState<any[]>([])
-  const [userActivityData, setUserActivityData] = useState<any[]>([])
-  const COLORS = ['#0088FE', '#AAAAAA']
-
-  const formatCurrency = (value: number) =>
-    `${value.toLocaleString('vi-VN')} VND`
-
   if (isLoading) {
-    return <Loading size='lg' />
+    return <Loading />
   }
 
   if (error || !data) {
@@ -68,55 +47,9 @@ export default function AdminDashboardContent() {
 
   const summary = data.data
 
-  // Cập nhật dữ liệu cho biểu đồ
-  useEffect(() => {
-    if (summary) {
-      setRevenueData([
-        {
-          name: 'Jan',
-          revenue: summary.totalBets * 0.7,
-          payout: summary.totalPayouts * 0.7,
-        },
-        {
-          name: 'Feb',
-          revenue: summary.totalBets * 0.8,
-          payout: summary.totalPayouts * 0.8,
-        },
-        {
-          name: 'Mar',
-          revenue: summary.totalBets * 0.9,
-          payout: summary.totalPayouts * 0.9,
-        },
-        {
-          name: 'Apr',
-          revenue: summary.totalBets * 0.95,
-          payout: summary.totalPayouts * 0.95,
-        },
-        {
-          name: 'May',
-          revenue: summary.totalBets * 0.98,
-          payout: summary.totalPayouts * 0.98,
-        },
-        {
-          name: 'Current',
-          revenue: summary.totalBets,
-          payout: summary.totalPayouts,
-        },
-      ])
-
-      setUserActivityData([
-        { name: 'Active Users', value: summary.activeUsers },
-        {
-          name: 'Inactive Users',
-          value: summary.totalUsers - summary.activeUsers,
-        },
-      ])
-    }
-  }, [summary])
-
   return (
     <div className='space-y-6'>
-      {/* Hàng 1: Các Card Tóm Tắt */}
+      {/* Thống kê tổng quan */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
         {/* Tổng số người dùng */}
         <Card className='bg-white'>
@@ -150,12 +83,12 @@ export default function AdminDashboardContent() {
               <span className='text-green-600 font-medium'>
                 +{summary.registrationsToday}
               </span>
-              <span className='ml-1 text-gray-500'> đăng ký hôm nay</span>
+              <span className='ml-1 text-gray-500'>Đăng ký hôm nay</span>
             </div>
           </div>
         </Card>
 
-        {/* Người dùng hoạt động */}
+        {/* Người dùng đang hoạt động */}
         <Card className='bg-white'>
           <div className='p-6'>
             <div className='flex justify-between items-start'>
@@ -195,7 +128,7 @@ export default function AdminDashboardContent() {
             <div className='flex justify-between items-start'>
               <div>
                 <p className='text-sm font-medium text-gray-500'>
-                  Yêu cầu thanh toán
+                  Yêu cầu thanh toán đang chờ
                 </p>
                 <h3 className='text-3xl font-bold mt-1'>
                   {summary.pendingPayments}
@@ -266,194 +199,83 @@ export default function AdminDashboardContent() {
         </Card>
       </div>
 
-      {/* Hàng 2: Biểu đồ */}
-      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
-        {/* Biểu đồ doanh thu vs chi phí */}
-        <Card className='col-span-2 bg-white'>
-          <div className='p-6'>
-            <h3 className='text-lg font-medium mb-4'>Doanh thu vs Chi phí</h3>
-            <div className='h-80'>
-              <ResponsiveContainer width='100%' height='100%'>
-                <LineChart
-                  data={revenueData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray='3 3' />
-                  <XAxis dataKey='name' />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value) => formatCurrency(value as number)}
-                  />
-                  <Line
-                    type='monotone'
-                    dataKey='revenue'
-                    stroke='#3b82f6'
-                    name='Doanh thu'
-                  />
-                  <Line
-                    type='monotone'
-                    dataKey='payout'
-                    stroke='#ef4444'
-                    name='Chi phí'
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+      {/* Thống kê tài chính */}
+      <Card className='bg-white'>
+        <div className='p-6'>
+          <h3 className='text-lg font-medium mb-4'>Thống kê tài chính</h3>
+          <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+            <div className='p-4 bg-gray-50 rounded-lg'>
+              <p className='text-sm font-medium text-gray-500'>
+                Tổng tiền đặt cược
+              </p>
+              <h4 className='text-2xl font-bold mt-1 text-gray-900'>
+                {summary.totalBets.toLocaleString()} VND
+              </h4>
+            </div>
+            <div className='p-4 bg-gray-50 rounded-lg'>
+              <p className='text-sm font-medium text-gray-500'>
+                Tổng tiền thưởng
+              </p>
+              <h4 className='text-2xl font-bold mt-1 text-gray-900'>
+                {summary.totalPayouts.toLocaleString()} VND
+              </h4>
+            </div>
+            <div className='p-4 bg-gray-50 rounded-lg'>
+              <p className='text-sm font-medium text-gray-500'>Lợi nhuận</p>
+              <h4 className='text-2xl font-bold mt-1 text-green-600'>
+                {summary.profit.toLocaleString()} VND
+              </h4>
+              <p className='text-sm text-gray-500 mt-1'>
+                Tỷ lệ:{' '}
+                {summary.totalBets > 0
+                  ? ((summary.profit / summary.totalBets) * 100).toFixed(2)
+                  : 0}
+                %
+              </p>
             </div>
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        {/* Biểu đồ tròn cho người dùng hoạt động */}
-        <Card className='bg-white'>
-          <div className='p-6'>
-            <h3 className='text-lg font-medium mb-4'>Người dùng hoạt động</h3>
-            <div className='h-80'>
-              <ResponsiveContainer width='100%' height='100%'>
-                <PieChart>
-                  <Pie
-                    data={userActivityData}
-                    cx='50%'
-                    cy='50%'
-                    innerRadius={60}
-                    outerRadius={100}
-                    fill='#8884d8'
-                    paddingAngle={5}
-                    dataKey='value'
-                    label={({ name, percent }) =>
-                      `${name}: ${(percent * 100).toFixed(0)}%`
-                    }>
-                    {userActivityData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => value} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Hàng 3: Thống kê chi tiết */}
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* Card thống kê chi tiết */}
-        <Card className='bg-white'>
-          <div className='p-6'>
-            <h3 className='text-lg font-medium mb-4'>Thống kê chi tiết</h3>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              <div className='space-y-4'>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <p className='text-sm text-gray-500'>Tổng đặt cược</p>
-                    <p className='text-lg font-medium'>
-                      {formatCurrency(summary.totalBets)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className='text-sm text-gray-500'>Tổng thanh toán</p>
-                    <p className='text-lg font-medium'>
-                      {formatCurrency(summary.totalPayouts)}
-                    </p>
-                  </div>
+      {/* Thống kê trò chơi */}
+      <Card className='bg-white'>
+        <div className='p-6'>
+          <h3 className='text-lg font-medium mb-4'>Thống kê trò chơi</h3>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            <div className='p-4 bg-gray-50 rounded-lg'>
+              <div className='flex justify-between items-center'>
+                <div>
+                  <p className='text-sm font-medium text-gray-500'>
+                    Lượt chơi đang diễn ra
+                  </p>
+                  <h4 className='text-2xl font-bold mt-1'>
+                    {summary.activeGames}
+                  </h4>
                 </div>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <p className='text-sm text-gray-500'>Lợi nhuận</p>
-                    <p className='text-lg font-medium'>
-                      {formatCurrency(summary.profit)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className='text-sm text-gray-500'>Tỷ lệ lợi nhuận</p>
-                    <p className='text-lg font-medium'>
-                      {summary.totalBets > 0
-                        ? ((summary.profit / summary.totalBets) * 100).toFixed(
-                            2
-                          )
-                        : 0}
-                      %
-                    </p>
-                  </div>
-                </div>
+                <Badge variant='success' dotIndicator pulsing>
+                  Đang diễn ra
+                </Badge>
               </div>
-              <div className='space-y-4'>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <p className='text-sm text-gray-500'>Tổng lượt chơi</p>
-                    <p className='text-lg font-medium'>
-                      {summary.activeGames + summary.completedGames}
-                    </p>
-                  </div>
-                  <div>
-                    <p className='text-sm text-gray-500'>Đã hoàn thành</p>
-                    <p className='text-lg font-medium'>
-                      {summary.completedGames}
-                    </p>
-                  </div>
+            </div>
+            <div className='p-4 bg-gray-50 rounded-lg'>
+              <div className='flex justify-between items-center'>
+                <div>
+                  <p className='text-sm font-medium text-gray-500'>
+                    Lượt chơi đã hoàn thành
+                  </p>
+                  <h4 className='text-2xl font-bold mt-1'>
+                    {summary.completedGames}
+                  </h4>
                 </div>
-                <div className='grid grid-cols-2 gap-4'>
-                  <div>
-                    <p className='text-sm text-gray-500'>
-                      Người dùng mới hôm nay
-                    </p>
-                    <p className='text-lg font-medium'>
-                      {summary.registrationsToday}
-                    </p>
-                  </div>
-                  <div>
-                    <p className='text-sm text-gray-500'>
-                      Người dùng hoạt động
-                    </p>
-                    <p className='text-lg font-medium'>{summary.activeUsers}</p>
-                  </div>
-                </div>
+                <Badge variant='primary'>Đã hoàn thành</Badge>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
+      </Card>
 
-        {/* Card thống kê trò chơi */}
-        <Card className='bg-white'>
-          <div className='p-6'>
-            <h3 className='text-lg font-medium mb-4'>Thống kê trò chơi</h3>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-              <div className='p-4 bg-gray-50 rounded-lg'>
-                <div className='flex justify-between items-center'>
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      Lượt chơi đang diễn ra
-                    </p>
-                    <h4 className='text-2xl font-bold mt-1'>
-                      {summary.activeGames}
-                    </h4>
-                  </div>
-                  <Badge variant='success' dotIndicator>
-                    Đang diễn ra
-                  </Badge>
-                </div>
-              </div>
-              <div className='p-4 bg-gray-50 rounded-lg'>
-                <div className='flex justify-between items-center'>
-                  <div>
-                    <p className='text-sm font-medium text-gray-500'>
-                      Lượt chơi đã hoàn thành
-                    </p>
-                    <h4 className='text-2xl font-bold mt-1'>
-                      {summary.completedGames}
-                    </h4>
-                  </div>
-                  <Badge variant='primary'>Đã hoàn thành</Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Hàng 4: Thao tác nhanh */}
+      {/* Actions */}
       <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-        {/* Thao tác: Tạo lượt chơi mới */}
         <Card className='bg-white'>
           <div className='p-6'>
             <div className='flex items-center mb-4'>
@@ -483,7 +305,6 @@ export default function AdminDashboardContent() {
           </div>
         </Card>
 
-        {/* Thao tác: Xử lý thanh toán */}
         <Card className='bg-white'>
           <div className='p-6'>
             <div className='flex items-center mb-4'>
@@ -513,7 +334,6 @@ export default function AdminDashboardContent() {
           </div>
         </Card>
 
-        {/* Thao tác: Quản lý người dùng */}
         <Card className='bg-white'>
           <div className='p-6'>
             <div className='flex items-center mb-4'>
