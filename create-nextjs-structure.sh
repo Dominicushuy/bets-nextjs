@@ -10,6 +10,10 @@ npx create-next-app@latest $PROJECT_NAME --typescript --tailwind --eslint
 # Di chuyển vào thư mục dự án  
 cd $PROJECT_NAME  
 
+# Cài đặt các package cần thiết  
+echo "Đang cài đặt các package cần thiết..."  
+npm install @supabase/supabase-js @tanstack/react-query @tanstack/react-query-devtools @headlessui/react lucide-react react-hot-toast
+
 # Tạo cấu trúc thư mục và file  
 echo "Đang tạo cấu trúc thư mục và file..."  
 
