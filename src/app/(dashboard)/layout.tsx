@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import Navbar from '@/components/layouts/main-layout'
-import Loading from '@/components/ui/loading'
+import { Loading } from '@/components/ui/loading'
 
 export default async function DashboardLayout({
   children,
