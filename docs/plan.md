@@ -5,35 +5,42 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ## I. Tổng quan các tính năng chính
 
 1. **Hệ thống xác thực người dùng**
+
    - Đăng nhập/đăng ký bằng số điện thoại
    - Phân quyền admin/user
 
 2. **Hệ thống Game/Cá cược**
+
    - Danh sách lượt chơi đang diễn ra
    - Chi tiết lượt chơi và đặt cược
    - Xử lý kết quả và phần thưởng
 
 3. **Quản lý thanh toán**
+
    - Yêu cầu nạp tiền với minh chứng
    - Phê duyệt thanh toán (admin)
    - Lịch sử giao dịch
 
 4. **Hồ sơ người dùng**
+
    - Thông tin cá nhân
    - Thống kê người dùng
    - Cập nhật hồ sơ
 
 5. **Bảng điều khiển Admin**
+
    - Quản lý người dùng
    - Quản lý lượt chơi
    - Phê duyệt thanh toán
    - Thống kê hệ thống
 
 6. **Hệ thống phần thưởng**
+
    - Mã code phần thưởng
    - Đổi thưởng
 
 7. **Khuyến mãi & Giới thiệu**
+
    - Quản lý khuyến mãi
    - Hệ thống giới thiệu người dùng
 
@@ -45,12 +52,14 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 1. Hệ thống xác thực người dùng
 
 **Bước 1: Cài đặt Provider xác thực**
+
 - Tính năng: Authentication với Supabase
 - Các file cần tạo/cập nhật:
   - `/src/providers/auth-provider.tsx`: Cung cấp context xác thực toàn ứng dụng
   - `/src/hooks/auth-hooks.ts`: Custom hooks xác thực
 
 **Bước 2: Trang đăng nhập**
+
 - Tính năng: Form đăng nhập với số điện thoại/email và mật khẩu
 - Các file cần tạo/cập nhật:
   - `/src/app/(auth)/login/page.tsx`: Trang đăng nhập
@@ -58,6 +67,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/auth/login/route.ts`: API route xử lý đăng nhập
 
 **Bước 3: Trang đăng ký**
+
 - Tính năng: Form đăng ký với SĐT và thông tin cơ bản
 - Các file cần tạo/cập nhật:
   - `/src/app/(auth)/register/page.tsx`: Trang đăng ký
@@ -66,6 +76,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/services/authService.ts`: Cập nhật phương thức tạo tài khoản
 
 **Bước 4: Middleware bảo vệ routes**
+
 - Tính năng: Kiểm tra xác thực và phân quyền
 - Các file cần tạo/cập nhật:
   - `/src/middleware.ts`: Middleware xác thực routes
@@ -73,6 +84,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 2. Hệ thống Game/Cá cược
 
 **Bước 1: Danh sách lượt chơi**
+
 - Tính năng: Hiển thị lượt chơi đang diễn ra và đã hoàn thành
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/games/page.tsx`: Trang danh sách lượt chơi
@@ -81,6 +93,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/game-rounds/route.ts`: API route lấy danh sách lượt chơi
 
 **Bước 2: Chi tiết lượt chơi**
+
 - Tính năng: Hiển thị thông tin chi tiết và cho phép đặt cược
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/games/[id]/page.tsx`: Trang chi tiết lượt chơi
@@ -90,12 +103,14 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/game-rounds/bets/route.ts`: API route xử lý đặt cược
 
 **Bước 3: Xử lý kết quả**
+
 - Tính năng: Xác định người thắng, tạo phần thưởng
 - Các file cần tạo/cập nhật:
   - `/src/app/api/game-rounds/[id]/complete/route.ts`: API route kết thúc lượt chơi
   - `/src/services/gameService.ts`: Cập nhật phương thức xử lý kết quả
 
 **Bước 4: Quản lý lượt chơi (Admin)**
+
 - Tính năng: Tạo, cập nhật, kết thúc lượt chơi
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/games/page.tsx`: Trang quản lý lượt chơi
@@ -106,6 +121,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 3. Quản lý thanh toán
 
 **Bước 1: Yêu cầu nạp tiền**
+
 - Tính năng: Form gửi yêu cầu nạp tiền với minh chứng
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/payment-request/page.tsx`: Trang yêu cầu nạp tiền
@@ -114,6 +130,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/payment-requests/route.ts`: API route xử lý yêu cầu
 
 **Bước 2: Lịch sử giao dịch**
+
 - Tính năng: Hiển thị lịch sử nạp tiền và đặt cược
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/history/page.tsx`: Trang lịch sử
@@ -121,6 +138,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/hooks/payment-hooks.ts`: Hooks để lấy dữ liệu thanh toán
 
 **Bước 3: Quản lý thanh toán (Admin)**
+
 - Tính năng: Duyệt/từ chối yêu cầu nạp tiền
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/payment-requests/page.tsx`: Trang quản lý thanh toán
@@ -131,6 +149,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 4. Hồ sơ người dùng
 
 **Bước 1: Trang hồ sơ**
+
 - Tính năng: Hiển thị và cho phép cập nhật thông tin cá nhân
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/profile/page.tsx`: Trang hồ sơ
@@ -139,6 +158,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/profile/route.ts`: API route lấy/cập nhật hồ sơ
 
 **Bước 2: Thống kê người dùng**
+
 - Tính năng: Hiển thị thống kê cá nhân (tỷ lệ thắng, phần thưởng...)
 - Các file cần tạo/cập nhật:
   - `/src/components/profile/statistics-card.tsx`: Component thống kê
@@ -147,12 +167,14 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 5. Bảng điều khiển Admin
 
 **Bước 1: Layout Admin**
+
 - Tính năng: Navigation sidebar và layout cho admin
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/layout.tsx`: Layout admin
   - `/src/components/admin/admin/admin-sidebar.tsx`: Sidebar cho admin
 
 **Bước 2: Dashboard Admin**
+
 - Tính năng: Hiển thị tổng quan hệ thống
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/dashboard/page.tsx`: Trang dashboard admin
@@ -160,6 +182,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/admin/dashboard-summary/route.ts`: API route lấy thống kê
 
 **Bước 3: Quản lý người dùng**
+
 - Tính năng: Danh sách, thông tin chi tiết, cập nhật người dùng
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/users/page.tsx`: Trang quản lý người dùng
@@ -168,6 +191,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/admin/users/route.ts`: API route quản lý người dùng
 
 **Bước 4: Nhật ký hệ thống**
+
 - Tính năng: Xem logs hoạt động hệ thống
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/logs/page.tsx`: Trang logs
@@ -177,6 +201,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 6. Hệ thống phần thưởng
 
 **Bước 1: Trang phần thưởng**
+
 - Tính năng: Hiển thị mã phần thưởng của người dùng
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/rewards/page.tsx`: Trang phần thưởng
@@ -185,12 +210,14 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/hooks/reward-hooks.ts`: Hooks để lấy dữ liệu phần thưởng
 
 **Bước 2: Mã QR phần thưởng**
+
 - Tính năng: Tạo mã QR cho phần thưởng
 - Các file cần tạo/cập nhật:
   - `/src/components/reward/reward-qr.tsx`: Component tạo mã QR
   - `/src/app/api/rewards/[code]/route.ts`: API route lấy thông tin mã
 
 **Bước 3: Quản lý phần thưởng (Admin)**
+
 - Tính năng: Tạo, cập nhật, hủy mã phần thưởng
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/rewards/page.tsx`: Trang quản lý phần thưởng
@@ -200,6 +227,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 7. Khuyến mãi & Giới thiệu
 
 **Bước 1: Trang khuyến mãi**
+
 - Tính năng: Hiển thị khuyến mãi đang có
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/promotions/page.tsx`: Trang khuyến mãi
@@ -207,6 +235,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/hooks/promotion-hooks.ts`: Hooks để lấy dữ liệu khuyến mãi
 
 **Bước 2: Hệ thống giới thiệu**
+
 - Tính năng: Tạo mã giới thiệu, theo dõi người giới thiệu
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/referrals/page.tsx`: Trang giới thiệu
@@ -215,6 +244,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/app/api/referrals/route.ts`: API route lấy/tạo mã giới thiệu
 
 **Bước 3: Quản lý khuyến mãi (Admin)**
+
 - Tính năng: Tạo, cập nhật, hủy khuyến mãi
 - Các file cần tạo/cập nhật:
   - `/src/app/(admin)/admin/promotions/page.tsx`: Trang quản lý khuyến mãi
@@ -224,6 +254,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### 8. Thông báo
 
 **Bước 1: Hệ thống thông báo**
+
 - Tính năng: Thông báo trong ứng dụng
 - Các file cần tạo/cập nhật:
   - `/src/providers/notification-provider.tsx`: Provider quản lý thông báo
@@ -231,6 +262,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
   - `/src/hooks/notification-hooks.ts`: Hooks để lấy/quản lý thông báo
 
 **Bước 2: Trang thông báo**
+
 - Tính năng: Hiển thị tất cả thông báo
 - Các file cần tạo/cập nhật:
   - `/src/app/(dashboard)/notifications/page.tsx`: Trang thông báo
@@ -242,6 +274,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### Giai đoạn 1: Xác thực và Cơ sở
 
 1. **Xác thực người dùng**
+
    - Đăng nhập/đăng ký
    - Phân quyền admin/user
    - Middleware bảo vệ routes
@@ -256,6 +289,7 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### Giai đoạn 2: Tính năng cốt lõi
 
 3. **Hệ thống Game**
+
    - Danh sách và chi tiết lượt chơi
    - Đặt cược
    - Xử lý kết quả
@@ -270,16 +304,19 @@ Dựa trên phân tích hệ thống và các services đã có, tôi sẽ trìn
 ### Giai đoạn 3: Quản trị và tính năng nâng cao
 
 5. **Dashboard người dùng**
+
    - Thống kê cá nhân
    - Truy cập nhanh các tính năng
 
 6. **Bảng điều khiển Admin**
+
    - Quản lý người dùng
    - Quản lý lượt chơi
    - Quản lý thanh toán
    - Thống kê hệ thống
 
 7. **Hệ thống phần thưởng và Khuyến mãi**
+
    - Quản lý mã phần thưởng
    - Khuyến mãi
    - Giới thiệu người dùng

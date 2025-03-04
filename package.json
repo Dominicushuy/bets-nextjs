@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "db-type": "supabase gen types typescript --project-id eubjzigperafsrdzivvv > src/types/database.ts"
+    "db-type": "supabase gen types typescript --project-id eubjzigperafsrdzivvv > src/types/supabase.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",

@@ -1,50 +1,64 @@
-// middleware.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+// src/middleware.ts
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
 
-  // Đường dẫn hiện tại
-  const path = req.nextUrl.pathname
+  // Kiểm tra xác thực cho routes thuộc về dashboard và admin
+  const isDashboardRoute = req.nextUrl.pathname.startsWith("/dashboard");
+  const isGameRoute = req.nextUrl.pathname.startsWith("/games");
+  const isHistoryRoute = req.nextUrl.pathname.startsWith("/history");
+  const isProfileRoute = req.nextUrl.pathname.startsWith("/profile");
+  const isPaymentRoute = req.nextUrl.pathname.startsWith("/payment-request");
+  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin");
 
-  // Kiểm tra các routes được bảo vệ
-  if (path.startsWith('/dashboard') || path.startsWith('/admin')) {
-    if (!session) {
-      const redirectUrl = new URL('/login', req.url)
-      redirectUrl.searchParams.set('redirectedFrom', path)
-      return NextResponse.redirect(redirectUrl)
-    }
+  const isProtectedRoute =
+    isDashboardRoute ||
+    isGameRoute ||
+    isHistoryRoute ||
+    isProfileRoute ||
+    isPaymentRoute ||
+    isAdminRoute;
 
-    // Kiểm tra quyền admin
-    if (path.startsWith('/admin')) {
-      // Lấy profile để kiểm tra role
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
+  // Nếu là route cần xác thực nhưng chưa đăng nhập
+  if (isProtectedRoute && !session) {
+    const redirectUrl = new URL("/login", req.url);
+    redirectUrl.searchParams.set("redirectedFrom", req.nextUrl.pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
 
-      if (!profile || profile.role !== 'admin') {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
+  // Kiểm tra quyền admin cho các route admin
+  if (isAdminRoute && session) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    // Nếu không phải admin, redirect về dashboard
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }
 
-  // Nếu đã đăng nhập và truy cập trang login/register, chuyển hướng đến dashboard
-  if (session && (path === '/login' || path === '/register')) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  return res
+  return res;
 }
 
-// Chỉ định các routes sẽ trigger middleware
+// Chỉ áp dụng middleware cho các route sau
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/login', '/register'],
-}
+  matcher: [
+    "/dashboard/:path*",
+    "/games/:path*",
+    "/history/:path*",
+    "/profile/:path*",
+    "/payment-request/:path*",
+    "/admin/:path*",
+  ],
+};
