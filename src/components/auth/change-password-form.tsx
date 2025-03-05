@@ -2,36 +2,57 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
-import { LockIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import { useChangePassword } from '@/hooks/auth-hooks'
 
 export default function ChangePasswordForm() {
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-
+  const router = useRouter()
+  const [formData, setFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  })
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
   const [errors, setErrors] = useState<Record<string, string>>({})
+
   const { mutate: changePassword, isPending } = useChangePassword()
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+
+    // Xóa lỗi khi người dùng nhập lại
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!currentPassword) {
-      newErrors.currentPassword = 'Mật khẩu hiện tại là bắt buộc'
+    if (!formData.currentPassword) {
+      newErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại'
     }
 
-    if (!newPassword) {
-      newErrors.newPassword = 'Mật khẩu mới là bắt buộc'
-    } else if (newPassword.length < 6) {
+    if (!formData.newPassword) {
+      newErrors.newPassword = 'Vui lòng nhập mật khẩu mới'
+    } else if (formData.newPassword.length < 6) {
       newErrors.newPassword = 'Mật khẩu mới phải có ít nhất 6 ký tự'
     }
 
-    if (newPassword !== confirmPassword) {
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Vui lòng xác nhận mật khẩu mới'
+    } else if (formData.newPassword !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
     }
 
@@ -39,27 +60,36 @@ export default function ChangePasswordForm() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) {
-      return
-    }
+    if (!validateForm()) return
 
     changePassword(
-      { currentPassword, newPassword },
+      {
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+      },
       {
         onSuccess: () => {
-          // Reset form
-          setCurrentPassword('')
-          setNewPassword('')
-          setConfirmPassword('')
+          setFormData({
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+          })
+          toast.success('Mật khẩu đã được thay đổi thành công')
+          router.push('/profile')
         },
         onError: (error: any) => {
-          if (error.message.includes('không chính xác')) {
-            setErrors({ currentPassword: error.message })
+          if (error.message.includes('current password')) {
+            setErrors((prev) => ({
+              ...prev,
+              currentPassword: 'Mật khẩu hiện tại không chính xác',
+            }))
           } else {
-            setErrors({ form: error.message })
+            toast.error(
+              error.message || 'Không thể thay đổi mật khẩu. Vui lòng thử lại.'
+            )
           }
         },
       }
@@ -67,154 +97,89 @@ export default function ChangePasswordForm() {
   }
 
   return (
-    <form className='space-y-5' onSubmit={handleSubmit}>
-      {errors.form && (
-        <div className='p-3 bg-red-100 text-red-700 rounded-md text-sm'>
-          {errors.form}
-        </div>
-      )}
-
-      <div>
-        <label
-          htmlFor='currentPassword'
-          className='block text-sm font-medium text-gray-700 mb-1'>
-          Mật khẩu hiện tại
-        </label>
-        <div className='relative mt-1 rounded-md'>
-          <div className='pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3'>
-            <LockIcon className='h-5 w-5 text-gray-400' />
-          </div>
-          <input
-            id='currentPassword'
-            name='currentPassword'
-            type={showCurrentPassword ? 'text' : 'password'}
-            value={currentPassword}
-            onChange={(e) => {
-              setCurrentPassword(e.target.value)
-              if (errors.currentPassword) {
-                const newErrors = { ...errors }
-                delete newErrors.currentPassword
-                setErrors(newErrors)
-              }
-            }}
-            className={`block w-full rounded-md border ${
-              errors.currentPassword ? 'border-red-300' : 'border-gray-300'
-            } py-3 pl-10 pr-10 text-gray-900 placeholder-gray-400 focus:border-primary-500
-                      focus:ring-1 focus:ring-primary-500 transition-all duration-200`}
-            placeholder='Nhập mật khẩu hiện tại'
-          />
+    <form onSubmit={handleSubmit} className='space-y-4'>
+      <Input
+        label='Mật khẩu hiện tại'
+        name='currentPassword'
+        type={showCurrentPassword ? 'text' : 'password'}
+        value={formData.currentPassword}
+        onChange={handleChange}
+        placeholder='Nhập mật khẩu hiện tại'
+        icon={<Lock className='h-5 w-5 text-gray-400' />}
+        rightIcon={
           <button
             type='button'
             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-            className='absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer'>
+            className='focus:outline-none'>
             {showCurrentPassword ? (
-              <EyeOffIcon className='h-5 w-5 text-gray-400 hover:text-gray-600' />
+              <EyeOff className='h-5 w-5 text-gray-400' />
             ) : (
-              <EyeIcon className='h-5 w-5 text-gray-400 hover:text-gray-600' />
+              <Eye className='h-5 w-5 text-gray-400' />
             )}
           </button>
-        </div>
-        {errors.currentPassword && (
-          <p className='mt-1 text-sm text-red-600'>{errors.currentPassword}</p>
-        )}
-      </div>
+        }
+        error={errors.currentPassword}
+        disabled={isPending}
+        required
+      />
 
-      <div>
-        <label
-          htmlFor='newPassword'
-          className='block text-sm font-medium text-gray-700 mb-1'>
-          Mật khẩu mới
-        </label>
-        <div className='relative mt-1 rounded-md'>
-          <div className='pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3'>
-            <LockIcon className='h-5 w-5 text-gray-400' />
-          </div>
-          <input
-            id='newPassword'
-            name='newPassword'
-            type={showNewPassword ? 'text' : 'password'}
-            value={newPassword}
-            onChange={(e) => {
-              setNewPassword(e.target.value)
-              if (errors.newPassword) {
-                const newErrors = { ...errors }
-                delete newErrors.newPassword
-                setErrors(newErrors)
-              }
-            }}
-            className={`block w-full rounded-md border ${
-              errors.newPassword ? 'border-red-300' : 'border-gray-300'
-            } py-3 pl-10 pr-10 text-gray-900 placeholder-gray-400 focus:border-primary-500
-                      focus:ring-1 focus:ring-primary-500 transition-all duration-200`}
-            placeholder='Nhập mật khẩu mới'
-          />
+      <Input
+        label='Mật khẩu mới'
+        name='newPassword'
+        type={showNewPassword ? 'text' : 'password'}
+        value={formData.newPassword}
+        onChange={handleChange}
+        placeholder='Nhập mật khẩu mới'
+        icon={<Lock className='h-5 w-5 text-gray-400' />}
+        rightIcon={
           <button
             type='button'
             onClick={() => setShowNewPassword(!showNewPassword)}
-            className='absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer'>
+            className='focus:outline-none'>
             {showNewPassword ? (
-              <EyeOffIcon className='h-5 w-5 text-gray-400 hover:text-gray-600' />
+              <EyeOff className='h-5 w-5 text-gray-400' />
             ) : (
-              <EyeIcon className='h-5 w-5 text-gray-400 hover:text-gray-600' />
+              <Eye className='h-5 w-5 text-gray-400' />
             )}
           </button>
-        </div>
-        {errors.newPassword && (
-          <p className='mt-1 text-sm text-red-600'>{errors.newPassword}</p>
-        )}
-      </div>
+        }
+        error={errors.newPassword}
+        disabled={isPending}
+        required
+      />
 
-      <div>
-        <label
-          htmlFor='confirmPassword'
-          className='block text-sm font-medium text-gray-700 mb-1'>
-          Xác nhận mật khẩu mới
-        </label>
-        <div className='relative mt-1 rounded-md'>
-          <div className='pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3'>
-            <LockIcon className='h-5 w-5 text-gray-400' />
-          </div>
-          <input
-            id='confirmPassword'
-            name='confirmPassword'
-            type={showConfirmPassword ? 'text' : 'password'}
-            value={confirmPassword}
-            onChange={(e) => {
-              setConfirmPassword(e.target.value)
-              if (errors.confirmPassword) {
-                const newErrors = { ...errors }
-                delete newErrors.confirmPassword
-                setErrors(newErrors)
-              }
-            }}
-            className={`block w-full rounded-md border ${
-              errors.confirmPassword ? 'border-red-300' : 'border-gray-300'
-            } py-3 pl-10 pr-10 text-gray-900 placeholder-gray-400 focus:border-primary-500
-                      focus:ring-1 focus:ring-primary-500 transition-all duration-200`}
-            placeholder='Xác nhận mật khẩu mới'
-          />
+      <Input
+        label='Xác nhận mật khẩu mới'
+        name='confirmPassword'
+        type={showConfirmPassword ? 'text' : 'password'}
+        value={formData.confirmPassword}
+        onChange={handleChange}
+        placeholder='Nhập lại mật khẩu mới'
+        icon={<Lock className='h-5 w-5 text-gray-400' />}
+        rightIcon={
           <button
             type='button'
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className='absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer'>
+            className='focus:outline-none'>
             {showConfirmPassword ? (
-              <EyeOffIcon className='h-5 w-5 text-gray-400 hover:text-gray-600' />
+              <EyeOff className='h-5 w-5 text-gray-400' />
             ) : (
-              <EyeIcon className='h-5 w-5 text-gray-400 hover:text-gray-600' />
+              <Eye className='h-5 w-5 text-gray-400' />
             )}
           </button>
-        </div>
-        {errors.confirmPassword && (
-          <p className='mt-1 text-sm text-red-600'>{errors.confirmPassword}</p>
-        )}
-      </div>
+        }
+        error={errors.confirmPassword}
+        disabled={isPending}
+        required
+      />
 
-      <div>
+      <div className='pt-4'>
         <Button
           type='submit'
-          className='w-full py-3'
-          disabled={isPending}
-          loading={isPending}>
+          variant='primary'
+          fullWidth
+          loading={isPending}
+          disabled={isPending}>
           Đổi mật khẩu
         </Button>
       </div>
