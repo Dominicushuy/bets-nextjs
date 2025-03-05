@@ -32,7 +32,6 @@
    - Tạo bảng profiles, game_rounds, bets, payment_requests, user_statistics, v.v.
    - Tạo indexes và foreign keys
    - Thiết lập RLS Policies
-   - Tạo Functions và Triggers ban đầu
 
 #### Tuần 2: Xây dựng hệ thống xác thực và quản lý người dùng
 1. **Xây dựng các trang xác thực**
