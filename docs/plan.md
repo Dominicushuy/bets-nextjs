@@ -1,592 +1,279 @@
-# Kế hoạch phát triển chi tiết dự án Game Cá Cược
+# Kế hoạch phát triển chi tiết dự án Game Cá Cược (Task-based)
 
-## I. Tổng quan dự án
+## Tuần 1: Thiết lập cơ sở hạ tầng và xác thực
 
-**Tên dự án:** Game Cá Cược  
-**Mục tiêu:** Xây dựng nền tảng cá cược trực tuyến với hệ thống quản lý người dùng, trò chơi, đặt cược, thanh toán và phần thưởng  
-**Công nghệ chính:**
+### Ngày 1-2: Thiết lập dự án và database
 
-- Frontend: Next.js 14 (App Router), React, TailwindCSS
-- Backend: Supabase (Authentication, Database, Storage, RPC)
-- Database: PostgreSQL (quản lý qua Supabase)
-- State Management: React Query (TanStack Query)
-- Authentication: Supabase Auth
+1. [ ] Tạo project Supabase mới
+2. [ ] Cài đặt Next.js 14 với App Router
+3. [ ] Cấu hình TailwindCSS và thư viện UI
+4. [ ] Thiết lập cấu trúc thư mục dự án
+5. [ ] Tạo file environment và cấu hình
 
-## II. Giai đoạn phát triển
+### Ngày 3-4: Thiết lập Database Schema
 
-### Giai đoạn 1: Thiết lập cơ sở hạ tầng và xác thực người dùng (2 tuần)
+1. [ ] Chạy SQL script để tạo bảng và mối quan hệ
+2. [ ] Thiết lập Triggers và Functions cơ bản
+3. [ ] Cấu hình RLS Policies cho các bảng
+4. [ ] Cài đặt Storage Buckets cho uploads
 
-#### Tuần 1: Thiết lập dự án và database
+### Ngày 5: Tích hợp Supabase Client
 
-1. **Thiết lập dự án Next.js**
+1. [ ] Cài đặt và cấu hình Supabase Client
+2. [ ] Tạo các utility functions để giao tiếp với Supabase
+3. [ ] Thiết lập Authentication Provider
 
-   - Cài đặt Next.js 14 với App Router
-   - Cấu hình TailwindCSS
-   - Thiết lập cấu trúc thư mục (pages, components, hooks, lib, services)
-   - Tạo file environment (.env) và cấu hình hệ thống
+## Tuần 2: Phát triển xác thực và UI Components
 
-2. **Cấu hình Supabase**
+### Ngày 1-2: Xây dựng Auth Components
 
-   - Tạo project Supabase
-   - Setup Authentication (Email, Phone)
-   - Upload và chạy schema.sql để tạo database schema
-   - Thiết lập storage buckets cho uploads
+1. [ ] Tạo Login Form component
+2. [ ] Tạo Register Form component
+3. [ ] Xây dựng Forgot Password workflow
+4. [ ] Phát triển Auth Provider và hooks
 
-3. **Thiết lập Database Schema**
-   - Tạo bảng profiles, game_rounds, bets, payment_requests, user_statistics, v.v.
-   - Tạo indexes và foreign keys
-   - Thiết lập RLS Policies
+### Ngày 3-4: API Routes xác thực
 
-#### Tuần 2: Xây dựng hệ thống xác thực và quản lý người dùng
+1. [ ] Tạo API route đăng ký `/api/auth/register`
+2. [ ] Tạo API route đăng nhập `/api/auth/login`
+3. [ ] Tạo API route reset mật khẩu `/api/auth/reset-password`
+4. [ ] Tạo API route cập nhật profile `/api/profile`
 
-1. **Xây dựng các trang xác thực**
+### Ngày 5: UI Components cơ bản
 
-   - Trang Login `/login`
-   - Trang Register `/register`
-   - Trang Forgot Password `/forgot-password`
-   - Trang Reset Password `/reset-password`
+1. [ ] Phát triển Button component với variants
+2. [ ] Phát triển Card component với variants
+3. [ ] Phát triển Input, Checkbox, Select components
+4. [ ] Phát triển Loading và Alert components
 
-2. **Xây dựng AuthProvider và hooks**
+## Tuần 3: Layout và Profile
 
-   - Tạo AuthProvider.tsx
-   - Phát triển hook useAuth
-   - Thiết lập middleware bảo vệ routes
+### Ngày 1-2: Xây dựng Layout
 
-3. **Tạo các API routes xác thực**
+1. [ ] Tạo Root Layout với providers
+2. [ ] Tạo Dashboard Layout với navigation
+3. [ ] Tạo Admin Layout với sidebar
+4. [ ] Tạo Auth Layout
 
-   - Route đăng ký `/api/auth/register`
-   - Route đăng nhập `/api/auth/login`
-   - Route reset mật khẩu `/api/auth/reset-password`
+### Ngày 3-4: Trang Profile
 
-4. **Xây dựng UI Components ban đầu**
-   - Button component
-   - Card component
-   - Form components (Input, Select, etc.)
-   - Dialog component
-   - Loading component
+1. [ ] Xây dựng trang Profile với form cập nhật thông tin
+2. [ ] Phát triển component upload avatar
+3. [ ] Tạo API route upload file `/api/upload`
+4. [ ] Phát triển hooks quản lý profile
 
-### Giai đoạn 2: Phát triển quản lý người dùng và layout (2 tuần)
+### Ngày 5: Trang Dashboard và History
 
-#### Tuần 3: Phát triển hồ sơ người dùng và layout
+1. [ ] Tạo Dashboard page với các widget
+2. [ ] Tạo components hiển thị thống kê người dùng
+3. [ ] Phát triển trang History
+4. [ ] Tạo API routes cho history và thống kê
 
-1. **Xây dựng layouts chính**
+## Tuần 4: Game System
 
-   - Layout `/src/app/layout.tsx` (Root layout)
-   - Dashboard layout `/src/app/(dashboard)/layout.tsx`
-   - Admin layout `/src/app/(admin)/layout.tsx`
-   - Auth layout `/src/app/(auth)/layout.tsx`
+### Ngày 1-2: Game List
 
-2. **Trang hồ sơ người dùng**
+1. [ ] Tạo trang Games list
+2. [ ] Phát triển Game Card component
+3. [ ] Tạo API route lấy danh sách games `/api/game-rounds`
+4. [ ] Phát triển hooks quản lý games
 
-   - Trang Profile `/profile`
-   - Components cập nhật thông tin cá nhân
-   - Avatar upload
-   - Thống kê người dùng
+### Ngày 3-5: Game Detail
 
-3. **Tạo API routes cho hồ sơ**
+1. [ ] Tạo trang Game Detail
+2. [ ] Phát triển component đặt cược
+3. [ ] Tạo API route game detail `/api/game-rounds/[id]`
+4. [ ] Tạo API route đặt cược `/api/game-rounds/bets`
+5. [ ] Thiết lập real-time subscriptions cho game status
 
-   - Profile API route `/api/profile`
-   - Upload API route `/api/upload`
+## Tuần 5: Betting System
 
-4. **Phát triển hooks quản lý hồ sơ**
-   - useExtendedUserProfile
-   - useUpdateUserProfile
-   - useUploadProfileAvatar
+### Ngày 1-2: Betting UI
 
-#### Tuần 4: Dashboard và provider chung
+1. [ ] Phát triển Bet Form với validation
+2. [ ] Tạo Bet Confirmation dialog
+3. [ ] Phát triển Game Status component
+4. [ ] Xây dựng Bet List component
 
-1. **Xây dựng Dashboard**
+### Ngày 3-5: Betting Backend
 
-   - Trang Dashboard chính `/dashboard`
-   - Components hiển thị thống kê người dùng
-   - Hiển thị lượt chơi đang diễn ra
+1. [ ] Tạo SQL function place_bet
+2. [ ] Thiết lập trigger sau khi đặt cược
+3. [ ] Cài đặt RLS cho bets
+4. [ ] Tạo SQL function cập nhật số dư người dùng
 
-2. **Phát triển các providers chung**
+## Tuần 6: Game Results
 
-   - ToastProvider
-   - QueryProvider
-   - NotificationProvider
+### Ngày 1-2: Game Results UI
 
-3. **Tạo các shared components**
+1. [ ] Phát triển Game Result component
+2. [ ] Tạo animations cho hiển thị kết quả
+3. [ ] Xây dựng Result Summary component
+4. [ ] Phát triển hooks quản lý kết quả
 
-   - Navbar
-   - Sidebar
-   - Footer
-   - Badges
-   - Cards
+### Ngày 3-5: Game Results Backend
 
-4. **Lịch sử người dùng**
-   - Trang History `/history`
-   - Components hiển thị lịch sử đặt cược
-   - Components hiển thị lịch sử thanh toán
+1. [ ] Tạo SQL function complete_game_round
+2. [ ] Tạo API route hoàn thành lượt chơi `/api/game-rounds/[id]/complete`
+3. [ ] Tạo API route kết quả lượt chơi `/api/game-rounds/[id]/results`
+4. [ ] Thiết lập trigger tạo phần thưởng khi game kết thúc
 
-### Giai đoạn 3: Phát triển hệ thống game và cá cược (3 tuần)
+## Tuần 7: Reward System
 
-#### Tuần 5: Hệ thống Game
+### Ngày 1-2: Reward UI
 
-1. **Phát triển trang danh sách lượt chơi**
+1. [ ] Tạo trang Rewards
+2. [ ] Phát triển Reward Card component
+3. [ ] Xây dựng Reward QR component
+4. [ ] Tạo hooks quản lý rewards
 
-   - Trang Games `/games`
-   - Games List component
-   - Game Card component
-   - Pagination component
+### Ngày 3-5: Reward Backend
 
-2. **Xây dựng lọc và tìm kiếm**
+1. [ ] Tạo SQL function create_winner_rewards
+2. [ ] Tạo SQL function redeem_reward
+3. [ ] Tạo API route đổi thưởng `/api/rewards/[code]/redeem`
+4. [ ] Thiết lập RLS cho rewards
 
-   - Filter components
-   - Search functionality
-   - Status filters (Active, Completed, etc.)
+## Tuần 8: Payment System
 
-3. **API Routes game**
+### Ngày 1-2: Payment Request UI
 
-   - Game rounds API `/api/game-rounds`
-   - Game rounds detail API `/api/game-rounds/[id]`
+1. [ ] Tạo trang Payment Request
+2. [ ] Phát triển Payment Form component
+3. [ ] Xây dựng Upload Proof component
+4. [ ] Tạo hooks quản lý payment requests
 
-4. **Hooks quản lý game**
-   - useGameRounds
-   - useGameRoundsRealtime
+### Ngày 3-5: Payment Request Backend
 
-#### Tuần 6: Chi tiết Game và đặt cược
+1. [ ] Tạo SQL function update_user_balance
+2. [ ] Tạo API route payment requests `/api/payment-requests`
+3. [ ] Tạo API route xử lý payment request `/api/payment-requests/[id]`
+4. [ ] Thiết lập RLS cho payment requests
 
-1. **Trang chi tiết lượt chơi**
+## Tuần 9: Admin Dashboard
 
-   - Trang Game Detail `/games/[id]`
-   - Game Detail component
-   - Game Countdown component
-   - Game Status component
+### Ngày 1-2: Admin Dashboard UI
 
-2. **Hệ thống đặt cược**
+1. [ ] Tạo trang Admin Dashboard
+2. [ ] Phát triển Admin Stats components
+3. [ ] Xây dựng biểu đồ và visualizations
+4. [ ] Tạo hooks quản lý admin stats
 
-   - BetForm component
-   - Bet validation
-   - Bet confirmation dialog
+### Ngày 3-5: Admin Dashboard Backend
 
-3. **API Routes đặt cược**
+1. [ ] Tạo API route dashboard summary `/api/admin/dashboard-summary`
+2. [ ] Tạo SQL queries cho thống kê
+3. [ ] Thiết lập RLS cho admin access
+4. [ ] Tạo API route system logs `/api/admin/logs`
 
-   - Place bet API `/api/game-rounds/bets`
-   - Bet history API
+## Tuần 10: User Management (Admin)
 
-4. **Real-time updates**
-   - Realtime subscriptions cho đặt cược
-   - Live activity feed
-   - Status change notifications
+### Ngày 1-2: User Management UI
 
-#### Tuần 7: Kết quả và phần thưởng
+1. [ ] Tạo trang Users List
+2. [ ] Phát triển User Detail component
+3. [ ] Xây dựng User Edit Form
+4. [ ] Tạo hooks quản lý users
 
-1. **Hiển thị kết quả**
+### Ngày 3-5: User Management Backend
 
-   - Game Result component
-   - Winner Animation component
-   - Results API `/api/game-rounds/[id]/results`
+1. [ ] Tạo API route users list `/api/admin/users`
+2. [ ] Tạo API route user detail `/api/admin/users/[id]`
+3. [ ] Tạo SQL functions quản lý user
+4. [ ] Thiết lập RLS cho user management
 
-2. **Hệ thống phần thưởng**
+## Tuần 11: Game Management (Admin)
 
-   - Reward code display
-   - Redeem reward functionality
-   - Reward QR code
+### Ngày 1-2: Game Management UI
 
-3. **Hooks và services liên quan**
+1. [ ] Tạo trang Games Management
+2. [ ] Phát triển Create Game Form
+3. [ ] Xây dựng Game Control Panel
+4. [ ] Tạo hooks quản lý games (admin)
 
-   - useGameRoundResults
-   - useRedeemReward
+### Ngày 3-5: Game Management Backend
 
-4. **API Routes phần thưởng**
-   - Reward redeem API `/api/rewards/[code]/redeem`
+1. [ ] Tạo API route games list (admin) `/api/admin/games`
+2. [ ] Tạo API route game detail (admin) `/api/admin/games/[id]`
+3. [ ] Tạo SQL functions quản lý games
+4. [ ] Thiết lập RLS cho game management
 
-### Giai đoạn 4: Phát triển hệ thống thanh toán (2 tuần)
+## Tuần 12: Payment Management (Admin)
 
-#### Tuần 8: Yêu cầu nạp tiền và quản lý thanh toán
+### Ngày 1-2: Payment Management UI
 
-1. **Trang yêu cầu nạp tiền**
+1. [ ] Tạo trang Payment Requests Management
+2. [ ] Phát triển Payment Approval Form
+3. [ ] Xây dựng Payment History Table
+4. [ ] Tạo hooks quản lý payments (admin)
 
-   - Payment Request form `/payment-request`
-   - Upload proof component
-   - Payment confirmation
+### Ngày 3-5: Payment Management Backend
 
-2. **API Routes thanh toán**
+1. [ ] Tạo API route payment requests (admin) `/api/admin/payment-requests`
+2. [ ] Tạo API route payment approval `/api/admin/payment-requests/[id]`
+3. [ ] Tạo SQL functions xử lý payment approvals
+4. [ ] Thiết lập RLS cho payment management
 
-   - Payment requests API `/api/payment-requests`
-   - Payment approval API `/api/payment-requests/[id]`
+## Tuần 13: Notifications và Promotions
 
-3. **Hooks thanh toán**
+### Ngày 1-2: Notification System
 
-   - usePaymentRequests
-   - useCreatePaymentRequest
-   - useProcessPaymentRequest
+1. [ ] Tạo Notification Provider
+2. [ ] Phát triển Notification Component
+3. [ ] Xây dựng Notification List
+4. [ ] Tạo API route notifications `/api/notifications`
 
-4. **UI Components thanh toán**
-   - Payment status badges
-   - Payment history table
-   - Payment request card
+### Ngày 3-5: Promotion System
 
-#### Tuần 9: Hoàn thiện thanh toán và thống kê
+1. [ ] Tạo trang Promotions
+2. [ ] Phát triển Promotion Card component
+3. [ ] Tạo API route promotions `/api/promotions`
+4. [ ] Thiết lập SQL functions cho promotions
 
-1. **Trang lịch sử thanh toán**
+## Tuần 14: Referral System và Polish
 
-   - Payment history page
-   - Filter by date and status
-   - Export functionality
+### Ngày 1-2: Referral System
 
-2. **Thống kê tài chính người dùng**
+1. [ ] Tạo trang Referrals
+2. [ ] Phát triển Referral Link component
+3. [ ] Tạo API route referrals `/api/referrals`
+4. [ ] Thiết lập SQL functions cho referrals
 
-   - Financial statistics component
-   - Balance history chart
-   - Transaction summary
+### Ngày 3-5: Polishing & Bug Fixes
 
-3. **API Routes thống kê**
+1. [ ] Tối ưu hóa performance
+2. [ ] Refactor code redundancies
+3. [ ] Cải thiện responsive design
+4. [ ] Fix bugs và edge cases
 
-   - User statistics API `/api/profile/statistics`
-   - Financial summary API `/api/profile/finances`
+## Tuần 15: Testing
 
-4. **Hooks và services liên quan**
-   - useUserStatistics
-   - useFinancialSummary
+### Ngày 1-2: Unit Testing
 
-### Giai đoạn 5: Phát triển Admin Panel (3 tuần)
+1. [ ] Viết tests cho components
+2. [ ] Viết tests cho hooks
+3. [ ] Viết tests cho utils
+4. [ ] Viết tests cho API routes
 
-#### Tuần 10: Dashboard Admin và quản lý người dùng
+### Ngày 3-5: Integration Testing
 
-1. **Admin Dashboard**
+1. [ ] Viết tests cho luồng authentication
+2. [ ] Viết tests cho luồng betting
+3. [ ] Viết tests cho luồng payment
+4. [ ] Viết tests cho admin actions
 
-   - Admin Dashboard page `/admin/dashboard`
-   - System statistics components
-   - Key metrics visualization
+## Tuần 16: Deployment & Documentation
 
-2. **API Routes Admin**
+### Ngày 1-2: Deployment
 
-   - Admin dashboard stats API `/api/admin/dashboard-summary`
-   - System logs API `/api/admin/logs`
+1. [ ] Cấu hình production environment
+2. [ ] Set up CI/CD pipeline
+3. [ ] Deploy to Vercel
+4. [ ] Deploy Supabase production database
 
-3. **Quản lý người dùng**
+### Ngày 3-5: Documentation
 
-   - Users list page `/admin/users`
-   - User details page `/admin/users/[id]`
-   - User management forms
-
-4. **Hooks và components admin**
-   - useAdminStats
-   - AdminSidebar component
-   - AdminHeader component
-
-#### Tuần 11: Quản lý trò chơi và thanh toán
-
-1. **Quản lý lượt chơi**
-
-   - Games management page `/admin/games`
-   - Create game page `/admin/games/new`
-   - Edit game page `/admin/games/[id]`
-   - Complete game functionality
-
-2. **API Routes quản lý trò chơi**
-
-   - Admin games API `/api/admin/games`
-   - Complete game API `/api/game-rounds/[id]/complete`
-
-3. **Quản lý thanh toán**
-
-   - Payment requests page `/admin/payment-requests`
-   - Process payment form
-   - Payment verification
-
-4. **Hooks và components quản lý**
-   - useAdminGames
-   - useAdminPayments
-   - AdminGameControl component
-   - PaymentApproval component
-
-#### Tuần 12: Quản lý phần thưởng, logs và báo cáo
-
-1. **Quản lý phần thưởng**
-
-   - Rewards management page `/admin/rewards`
-   - Create reward form
-   - Reward usage tracking
-
-2. **Logs hệ thống**
-
-   - System logs page `/admin/logs`
-   - Activity filtering
-   - Audit trail
-
-3. **Báo cáo**
-
-   - Reports page `/admin/reports`
-   - Generate report functionality
-   - Export to CSV/Excel
-
-4. **Components và hooks liên quan**
-   - useSystemLogs
-   - useAdminReports
-   - LogsTable component
-   - ReportGenerator component
-
-### Giai đoạn 6: Khuyến mãi và tính năng bổ sung (2 tuần)
-
-#### Tuần 13: Khuyến mãi và giới thiệu
-
-1. **Hệ thống khuyến mãi**
-
-   - Promotions page `/promotions`
-   - Admin promotions management `/admin/promotions`
-   - Promotion usage tracking
-
-2. **API Routes khuyến mãi**
-
-   - Promotions API `/api/promotions`
-   - Apply promotion API `/api/promotions/apply`
-
-3. **Hệ thống giới thiệu**
-
-   - Referral page `/referrals`
-   - Referral code generation
-   - Referral tracking
-
-4. **Hooks và components liên quan**
-   - usePromotions
-   - useReferrals
-   - PromotionCard component
-   - ReferralLink component
-
-#### Tuần 14: Thông báo và trang thông tin
-
-1. **Hệ thống thông báo**
-
-   - Notifications page `/notifications`
-   - Real-time notifications
-   - Email notifications
-
-2. **API Routes thông báo**
-
-   - Notifications API `/api/notifications`
-   - Mark as read API `/api/notifications/mark-read`
-
-3. **Trang thông tin**
-
-   - About page `/about`
-   - Terms page `/terms`
-   - Privacy page `/privacy`
-   - FAQ page `/faq`
-
-4. **Components liên quan**
-   - NotificationBell component
-   - NotificationList component
-   - Notification toasts
-
-### Giai đoạn 7: Testing, Optimization và Deployment (2 tuần)
-
-#### Tuần 15: Testing và Optimization
-
-1. **Unit Testing**
-
-   - Component tests
-   - Hook tests
-   - Service tests
-
-2. **Integration Testing**
-
-   - API route tests
-   - Page tests
-   - End-to-end flows
-
-3. **Performance Optimization**
-
-   - Bundle size optimization
-   - Image optimization
-   - Database query optimization
-   - Caching strategies
-
-4. **Mobile Responsiveness**
-   - Testing on mobile devices
-   - Responsive design fixes
-   - Mobile UI enhancements
-
-#### Tuần 16: Deployment và Monitoring
-
-1. **Deployment**
-
-   - Production build
-   - Vercel deployment
-   - Supabase production setup
-   - Environment configuration
-
-2. **Monitoring và Analytics**
-
-   - Error tracking setup
-   - Performance monitoring
-   - User analytics
-
-3. **Documentation**
-
-   - API documentation
-   - Admin guide
-   - User guide
-   - Technical documentation
-
-4. **Final Testing and Launch**
-   - UAT (User Acceptance Testing)
-   - Security audits
-   - Final fixes
-   - Launch planning
-
-## III. Cấu trúc thư mục
-
-```
-src/
-├── app/                    # App Router
-│   ├── (admin)/            # Admin routes
-│   ├── (auth)/             # Auth routes
-│   ├── (dashboard)/        # Dashboard routes
-│   ├── api/                # API routes
-│   └── layout.tsx          # Root layout
-├── components/             # React components
-│   ├── admin/              # Admin-specific components
-│   ├── auth/               # Auth-related components
-│   ├── dashboard/          # Dashboard components
-│   ├── game/               # Game-related components
-│   ├── history/            # History components
-│   ├── layouts/            # Layout components
-│   ├── payment/            # Payment components
-│   ├── profile/            # Profile components
-│   ├── ui/                 # UI Components
-│   └── ...
-├── hooks/                  # Custom React hooks
-├── lib/                    # Utility libraries
-│   ├── supabase/           # Supabase clients
-│   └── utils.ts            # Utility functions
-├── providers/              # Context providers
-├── services/               # Service modules
-├── styles/                 # Global styles
-└── types/                  # TypeScript types
-```
-
-## IV. Dependencies chính
-
-- **Next.js**: Framework React cho SSR/SSG
-- **React**: UI library
-- **TailwindCSS**: Utility-first CSS framework
-- **@supabase/auth-helpers-nextjs**: Auth helpers cho Next.js
-- **@supabase/supabase-js**: Supabase JavaScript client
-- **@tanstack/react-query**: Data fetching và state management
-- **react-hook-form**: Form handling
-- **zod**: Schema validation
-- **lucide-react**: Icon library
-- **react-hot-toast**: Toast notifications
-- **recharts**: Charting library
-- **dayjs**: Date manipulation
-
-## V. Supabase Setup
-
-### Database Tables
-
-- profiles
-- game_rounds
-- bets
-- payment_requests
-- reward_codes
-- user_statistics
-- promotions
-- promotion_usages
-- notifications
-- referrals
-- system_logs
-- user_levels
-
-### RLS Policies
-
-- Profiles read/write permissions
-- Game rounds permissions
-- Bets permissions
-- Payment requests permissions
-- Reward codes permissions
-- Notifications permissions
-
-### Functions
-
-- place_bet
-- complete_game_round
-- create_winner_rewards
-- redeem_reward
-- get_game_stats
-- update_user_balance
-
-## VI. Deliverables theo giai đoạn
-
-### Giai đoạn 1 (2 tuần)
-
-- Codebase với cấu trúc cơ bản
-- Database schema được thiết lập
-- Hệ thống xác thực người dùng
-- UI Components cơ bản
-
-### Giai đoạn 2 (2 tuần)
-
-- Dashboard và layout hoàn chỉnh
-- Quản lý hồ sơ người dùng
-- Hệ thống providers
-- Trang lịch sử người dùng
-
-### Giai đoạn 3 (3 tuần)
-
-- Trang danh sách lượt chơi
-- Trang chi tiết lượt chơi và đặt cược
-- Hệ thống phần thưởng và kết quả
-- Real-time updates
-
-### Giai đoạn 4 (2 tuần)
-
-- Hệ thống thanh toán
-- Trang và form yêu cầu nạp tiền
-- Lịch sử thanh toán
-- Thống kê tài chính
-
-### Giai đoạn 5 (3 tuần)
-
-- Admin dashboard
-- Quản lý người dùng
-- Quản lý trò chơi và thanh toán
-- Quản lý phần thưởng và logs
-
-### Giai đoạn 6 (2 tuần)
-
-- Hệ thống khuyến mãi
-- Hệ thống giới thiệu
-- Hệ thống thông báo
-- Trang thông tin
-
-### Giai đoạn 7 (2 tuần)
-
-- Tests
-- Performance optimizations
-- Deployment
-- Documentation
-
-## VII. Timeline tổng thể
-
-**Tổng thời gian:** 16 tuần (4 tháng)
-
-- **Giai đoạn 1:** Tuần 1-2
-- **Giai đoạn 2:** Tuần 3-4
-- **Giai đoạn 3:** Tuần 5-7
-- **Giai đoạn 4:** Tuần 8-9
-- **Giai đoạn 5:** Tuần 10-12
-- **Giai đoạn 6:** Tuần 13-14
-- **Giai đoạn 7:** Tuần 15-16
-
-## VIII. Quản lý rủi ro
-
-1. **Thay đổi yêu cầu**: Duy trì tài liệu yêu cầu rõ ràng và quy trình kiểm soát thay đổi
-2. **Vấn đề kỹ thuật**: Nghiên cứu kỹ thuật từ đầu và có plan dự phòng
-3. **Deadline slippage**: Buffer 20% thời gian cho mỗi giai đoạn
-4. **Sự phức tạp không lường trước**: Đánh giá rủi ro thường xuyên và điều chỉnh plan khi cần
-
-## IX. Các mốc quan trọng
-
-1. **Week 2**: Hoàn thành auth và database setup
-2. **Week 4**: Hoàn thành dashboard và profile
-3. **Week 7**: Hoàn thành core game và betting functionality
-4. **Week 9**: Hoàn thành payment system
-5. **Week 12**: Hoàn thành admin panel
-6. **Week 14**: Hoàn thành tất cả tính năng
-7. **Week 16**: Sẵn sàng cho production
-
-Kế hoạch này cung cấp một lộ trình chi tiết từ đầu cho việc phát triển dự án Game Cá Cược, với các giai đoạn, nhiệm vụ cụ thể, deliverables rõ ràng, và timeline ước tính, giúp đảm bảo quá trình phát triển có tổ chức và hiệu quả.
+1. [ ] Viết API documentation
+2. [ ] Viết user guide
+3. [ ] Viết admin guide
+4. [ ] Chuẩn bị tài liệu training
