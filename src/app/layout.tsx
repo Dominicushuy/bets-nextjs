@@ -5,6 +5,7 @@ import "./globals.css";
 import QueryProvider from "@/providers/query-provider";
 import ToastProvider from "@/providers/toast-provider";
 import { AuthProvider } from "@/providers/auth-provider";
+import { NotificationProvider } from "@/providers/notification-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,8 +24,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <QueryProvider>
           <AuthProvider>
-            {children}
-            <ToastProvider />
+            <NotificationProvider>
+              {children}
+              <ToastProvider />
+            </NotificationProvider>
           </AuthProvider>
         </QueryProvider>
       </body>
