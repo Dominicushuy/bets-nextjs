@@ -1,7 +1,5 @@
-// src/app/layout.tsx
-import type { Metadata } from "next";
+import "./styles/globals.css";
 import { Inter } from "next/font/google";
-import "./globals.css";
 import QueryProvider from "@/providers/query-provider";
 import ToastProvider from "@/providers/toast-provider";
 import { AuthProvider } from "@/providers/auth-provider";
@@ -9,9 +7,10 @@ import { NotificationProvider } from "@/providers/notification-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "Game Platform",
-  description: "A betting game platform",
+export const metadata = {
+  title: "Game Cá Cược - Nền tảng cá cược trực tuyến",
+  description:
+    "Nền tảng cá cược trực tuyến với đa dạng tính năng và giao diện thân thiện",
 };
 
 export default function RootLayout({
@@ -25,8 +24,8 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             <NotificationProvider>
-              {children}
               <ToastProvider />
+              {children}
             </NotificationProvider>
           </AuthProvider>
         </QueryProvider>
