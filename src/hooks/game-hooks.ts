@@ -439,3 +439,69 @@ export const useGameRoundRealtime = (gameId: string) => {
     }
   }, [gameId, queryClient])
 }
+
+/**
+ * Hook để kết thúc lượt chơi (admin only)
+ */
+export const useCompleteGameRound = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      gameId,
+      winningNumber,
+    }: {
+      gameId: string
+      winningNumber: string
+    }) => {
+      const response = await fetch(`/api/game-rounds/${gameId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ winningNumber }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error completing game round')
+      }
+
+      return await response.json()
+    },
+    onSuccess: (_data, variables) => {
+      // Invalidate queries
+      queryClient.invalidateQueries({
+        queryKey: gameKeys.detail(variables.gameId),
+      })
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+      toast.success('Lượt chơi đã được hoàn thành!')
+    },
+    onError: (error: any) => {
+      console.error('Error completing game round:', error)
+      toast.error(
+        error.message || 'Không thể hoàn thành lượt chơi. Vui lòng thử lại.'
+      )
+    },
+  })
+}
+
+/**
+ * Hook để lấy kết quả chi tiết của một lượt chơi
+ */
+export const useGameRoundResults = (gameId: string) => {
+  return useQuery({
+    queryKey: [...gameKeys.detail(gameId), 'results'],
+    queryFn: async () => {
+      const response = await fetch(`/api/game-rounds/${gameId}/results`)
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error fetching game results')
+      }
+
+      return await response.json()
+    },
+    enabled: !!gameId,
+  })
+}

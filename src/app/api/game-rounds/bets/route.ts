@@ -1,11 +1,10 @@
 // src/app/api/game-rounds/bets/route.ts
 import { createClient } from '@/lib/supabase/server'
-import { SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase: SupabaseClient = createClient()
+    const supabase = createClient()
 
     // Lấy thông tin người dùng hiện tại
     const {

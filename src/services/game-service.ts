@@ -1,7 +1,6 @@
 // src/services/game-service.ts
 import { createClient } from '@/lib/supabase/client'
 import { GameRound, Bet } from '@/types/database'
-import { SupabaseClient } from '@supabase/supabase-js'
 
 // Fetch tất cả lượt chơi với filter
 export async function getGameRounds(status?: string, page = 1, limit = 10) {
@@ -195,7 +194,7 @@ export async function placeBet(
   selectedNumber: string,
   amount: number
 ) {
-  const supabase: SupabaseClient = createClient()
+  const supabase = createClient()
 
   const { data, error } = await supabase.rpc('place_bet', {
     p_user_id: userId,
@@ -211,4 +210,51 @@ export async function placeBet(
   }
 
   return data
+}
+
+/**
+ * Kết thúc lượt chơi (admin only)
+ */
+export async function completeGameRound(gameId: string, winningNumber: string) {
+  const supabase = createClient()
+
+  // Gọi RPC function để hoàn thành lượt chơi
+  const { data, error } = await supabase.rpc('complete_game_round', {
+    p_game_id: gameId,
+    p_winning_number: winningNumber,
+    p_admin_id: (await supabase.auth.getUser()).data.user?.id,
+  })
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Lấy kết quả lượt chơi
+ */
+export async function getGameResults(gameId: string) {
+  const response = await fetch(`/api/game-rounds/${gameId}/results`)
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error fetching game results')
+  }
+
+  return await response.json()
+}
+
+/**
+ * Đổi phần thưởng
+ */
+export async function redeemReward(code: string) {
+  const response = await fetch(`/api/rewards/${code}/redeem`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error redeeming reward')
+  }
+
+  return await response.json()
 }

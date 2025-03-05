@@ -20,6 +20,8 @@ import GameStatusChecker from './game-status-checker'
 import WinnerAnimation from './winner-animation'
 import GameDetailSkeleton from './game-detail-skeleton'
 import GameResultBanner from './game-result-banner'
+import GameResultDetail from './game-result-detail'
+import AdminGameControl from '@/components/admin/games/admin-game-control'
 import { Bet } from '@/types/database'
 
 interface GameDetailProps {
@@ -44,6 +46,9 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
   const { data, isLoading, error } = useGameRoundDetails(gameId, userId)
   const { data: profile, isLoading: profileLoading } =
     useExtendedUserProfile(userId)
+
+  // Xác định quyền admin
+  const isAdmin = profile?.role === 'admin'
 
   // Cập nhật thời gian thực
   useGameRoundRealtime(gameId)
@@ -201,7 +206,15 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
         </h2>
       </div>
 
-      {/* Banner kết quả game nếu đã hoàn thành */}
+      {/* Hiển thị kết quả chi tiết nếu lượt chơi đã hoàn thành */}
+      {game.status === 'completed' && (
+        <GameResultDetail gameId={gameId} userId={userId} />
+      )}
+
+      {/* Hiển thị control panel cho admin */}
+      {isAdmin && <AdminGameControl game={game} />}
+
+      {/* Banner kết quả game nếu có */}
       {game.status === 'completed' && game.winning_number && (
         <GameResultBanner
           winningNumber={game.winning_number}
