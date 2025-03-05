@@ -676,3 +676,83 @@ USING (
     WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
   )
 );
+
+
+-- ------------------------------------------------
+-- RLS Policies cho bucket storage.objects
+-- ------------------------------------------------
+
+-- 1. Policy cho phép người dùng select (xem) avatar của mình và của người khác
+CREATE POLICY "Người dùng có thể xem avatar"
+ON storage.objects
+FOR SELECT
+USING (
+  bucket_id = 'user_avatars'
+);
+
+-- 2. Policy cho phép người dùng upload avatar của chính mình
+CREATE POLICY "Người dùng có thể upload avatar của mình"
+ON storage.objects
+FOR INSERT
+WITH CHECK (
+  bucket_id = 'user_avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- 3. Policy cho phép người dùng update avatar của chính mình
+CREATE POLICY "Người dùng có thể cập nhật avatar của mình"
+ON storage.objects
+FOR UPDATE
+USING (
+  bucket_id = 'user_avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- 4. Policy cho phép người dùng xóa avatar của chính mình
+CREATE POLICY "Người dùng có thể xóa avatar của mình"
+ON storage.objects
+FOR DELETE
+USING (
+  bucket_id = 'user_avatars' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- 1. Policy cho phép người dùng xem minh chứng thanh toán của chính mình
+CREATE POLICY "Người dùng có thể xem minh chứng thanh toán của mình"
+ON storage.objects
+FOR SELECT
+USING (
+  bucket_id = 'payment_proofs' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- 2. Policy cho phép admin xem minh chứng thanh toán của tất cả người dùng
+CREATE POLICY "Admin có thể xem tất cả minh chứng thanh toán"
+ON storage.objects
+FOR SELECT
+USING (
+  bucket_id = 'payment_proofs' AND
+  EXISTS (
+    SELECT 1
+    FROM profiles
+    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  )
+);
+
+-- 3. Policy cho phép người dùng upload minh chứng thanh toán
+CREATE POLICY "Người dùng có thể upload minh chứng thanh toán"
+ON storage.objects
+FOR INSERT
+WITH CHECK (
+  bucket_id = 'payment_proofs' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- 4. Policy cho phép người dùng xóa minh chứng thanh toán của chính mình
+CREATE POLICY "Người dùng có thể xóa minh chứng thanh toán của mình"
+ON storage.objects
+FOR DELETE
+USING (
+  bucket_id = 'payment_proofs' AND
+  (storage.foldername(name))[1] = auth.uid()::text
+);

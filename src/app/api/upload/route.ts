@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { uploadPaymentProof } from '@/lib/supabase/storage'
 
 export async function POST(request: NextRequest) {
   const supabase = createRouteHandlerClient({ cookies })
@@ -18,6 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const type = (formData.get('type') as string) || 'payment_proof' // Mặc định là payment_proof
 
     if (!file) {
       return NextResponse.json({ error: 'File is required' }, { status: 400 })
@@ -39,32 +41,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Tạo tên file độc nhất
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${user.id}_${Date.now()}.${fileExt}`
-    const filePath = `payment_proofs/${fileName}`
+    // Upload file dựa vào loại
+    let result
+    if (type === 'avatar') {
+      // Sẽ implement trong hook uploadProfileAvatar
+      return NextResponse.json(
+        { error: 'Use profile API for avatar uploads' },
+        { status: 400 }
+      )
+    } else {
+      // Mặc định là payment_proof
+      result = await uploadPaymentProof(user.id, file)
+    }
 
-    // Convert file to array buffer
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = new Uint8Array(arrayBuffer)
-
-    // Upload file lên Supabase Storage
-    const { data, error } = await supabase.storage
-      .from('payment_proofs')
-      .upload(filePath, buffer, {
-        contentType: file.type,
-        cacheControl: '3600',
-        upsert: false,
-      })
-
-    if (error) throw error
-
-    // Lấy URL công khai
-    const { data: urlData } = supabase.storage
-      .from('payment_proofs')
-      .getPublicUrl(filePath)
-
-    return NextResponse.json({ url: urlData.publicUrl })
+    return NextResponse.json({ url: result.url, path: result.path })
   } catch (error: any) {
     console.error('Error uploading file:', error)
     return NextResponse.json(

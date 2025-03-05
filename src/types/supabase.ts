@@ -174,7 +174,7 @@ export type Database = {
           is_active: boolean
           last_login: string | null
           level: number
-          phone: string
+          phone: string | null
           preferences: Json | null
           referral_code: string | null
           referred_by: string | null
@@ -197,7 +197,7 @@ export type Database = {
           is_active?: boolean
           last_login?: string | null
           level?: number
-          phone: string
+          phone?: string | null
           preferences?: Json | null
           referral_code?: string | null
           referred_by?: string | null
@@ -220,7 +220,7 @@ export type Database = {
           is_active?: boolean
           last_login?: string | null
           level?: number
-          phone?: string
+          phone?: string | null
           preferences?: Json | null
           referral_code?: string | null
           referred_by?: string | null
