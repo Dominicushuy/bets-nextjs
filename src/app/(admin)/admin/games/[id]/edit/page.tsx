@@ -1,15 +1,15 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import AdminGameDetail from '@/components/admin/games/admin-game-detail'
+import AdminGameForm from '@/components/admin/games/admin-game-form'
 import { notFound } from 'next/navigation'
 
 export const metadata = {
-  title: 'Chi tiết lượt chơi - Admin',
-  description: 'Xem chi tiết và quản lý lượt chơi',
+  title: 'Chỉnh sửa lượt chơi - Admin',
+  description: 'Chỉnh sửa thông tin lượt chơi',
 }
 
-export default async function GameDetailPage({
+export default async function EditGamePage({
   params,
 }: {
   params: { id: string }
@@ -46,10 +46,15 @@ export default async function GameDetailPage({
     notFound()
   }
 
+  // Chỉ cho phép sửa khi lượt chơi còn ở trạng thái pending
+  if (game.status !== 'pending') {
+    redirect(`/admin/games/${gameId}`)
+  }
+
   return (
     <div className='space-y-6'>
-      <h1 className='text-2xl font-bold'>Chi tiết lượt chơi</h1>
-      <AdminGameDetail gameId={gameId} adminId={session.user.id} />
+      <h1 className='text-2xl font-bold'>Chỉnh sửa lượt chơi</h1>
+      <AdminGameForm userId={session.user.id} gameId={gameId} />
     </div>
   )
 }

@@ -144,38 +144,6 @@ export const useUserBets = (userId: string) => {
 }
 
 /**
- * Hook để tạo game round mới (Admin)
- */
-export const useCreateGameRound = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (gameData: Partial<GameRound>) => {
-      const { data, error } = await supabase
-        .from('game_rounds')
-        .insert({
-          created_by: gameData.created_by || '',
-          start_time: gameData.start_time || new Date().toISOString(),
-          status: gameData.status || 'pending',
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-      return data as GameRound
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
-      toast.success('Tạo lượt chơi mới thành công!')
-    },
-    onError: (error: any) => {
-      console.error('Error creating game round:', error)
-      toast.error(error.message || 'Không thể tạo lượt chơi. Vui lòng thử lại.')
-    },
-  })
-}
-
-/**
  * Hook để lấy danh sách các game rounds với real-time updates
  */
 export const useGameRoundsRealtime = (
@@ -503,5 +471,114 @@ export const useGameRoundResults = (gameId: string) => {
       return await response.json()
     },
     enabled: !!gameId,
+  })
+}
+
+/**
+ * Hook để tạo lượt chơi mới
+ */
+export const useCreateGameRound = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (data: Partial<GameRound>) => {
+      const response = await fetch('/api/admin/games', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error creating game round')
+      }
+
+      return await response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+      toast.success('Tạo lượt chơi mới thành công!')
+    },
+    onError: (error: any) => {
+      console.error('Error creating game round:', error)
+      toast.error(error.message || 'Không thể tạo lượt chơi. Vui lòng thử lại.')
+    },
+  })
+}
+
+/**
+ * Hook để cập nhật lượt chơi
+ */
+export const useUpdateGameRound = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      gameId,
+      data,
+    }: {
+      gameId: string
+      data: Partial<GameRound>
+    }) => {
+      const response = await fetch(`/api/admin/games/${gameId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error updating game round')
+      }
+
+      return await response.json()
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: gameKeys.detail(variables.gameId),
+      })
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+      toast.success('Cập nhật lượt chơi thành công!')
+    },
+    onError: (error: any) => {
+      console.error('Error updating game round:', error)
+      toast.error(
+        error.message || 'Không thể cập nhật lượt chơi. Vui lòng thử lại.'
+      )
+    },
+  })
+}
+
+/**
+ * Hook để xóa lượt chơi
+ */
+export const useDeleteGameRound = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (gameId: string) => {
+      const response = await fetch(`/api/admin/games/${gameId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error deleting game round')
+      }
+
+      return await response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+      toast.success('Xóa lượt chơi thành công!')
+    },
+    onError: (error: any) => {
+      console.error('Error deleting game round:', error)
+      toast.error(error.message || 'Không thể xóa lượt chơi. Vui lòng thử lại.')
+    },
   })
 }
