@@ -7,7 +7,7 @@ import {
   useExtendedUserProfile,
   useUserStatistics,
 } from '@/hooks/profile-hooks'
-import { useGameRounds } from '@/hooks/game-hooks'
+import { useGameRoundsRealtime } from '@/hooks/game-hooks'
 import { useUserBets } from '@/hooks/game-hooks'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,8 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
     useExtendedUserProfile(userId)
   const { data: statistics, isLoading: statsLoading } =
     useUserStatistics(userId)
-  const { data: activeGames, isLoading: gamesLoading } = useGameRounds('active')
+  const { data: activeGames, isLoading: gamesLoading } =
+    useGameRoundsRealtime('active')
   const { data: userBets, isLoading: betsLoading } = useUserBets(userId)
 
   const isLoading =

@@ -1,23 +1,20 @@
+// src/components/game/bet-form.tsx
 'use client'
 
 import { useState } from 'react'
 import { usePlaceBet } from '@/hooks/game-hooks'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { useQueryClient } from '@tanstack/react-query'
+import { formatCurrency } from '@/lib/utils'
 
 interface BetFormProps {
-  userId: string
   gameId: string
   balance: number
-  onSuccess: (selectedNumber: string, amount: number) => void
+  onSuccess?: (selectedNumber: string, amount: number) => void
 }
 
-export default function BetForm({
-  userId,
-  gameId,
-  balance,
-  onSuccess,
-}: BetFormProps) {
+export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
   // Common numbers that users typically choose
   const commonNumbers = ['7', '8', '9', '68', '88', '99']
 
@@ -29,6 +26,7 @@ export default function BetForm({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [error, setError] = useState('')
 
+  const queryClient = useQueryClient()
   const { mutate: placeBet, isPending: isSubmitting } = usePlaceBet()
 
   const handlePlaceBet = () => {
@@ -57,7 +55,6 @@ export default function BetForm({
   const confirmPlaceBet = () => {
     placeBet(
       {
-        userId,
         gameRoundId: gameId,
         selectedNumber,
         amount: betAmount,
@@ -65,11 +62,16 @@ export default function BetForm({
       {
         onSuccess: () => {
           setConfirmDialogOpen(false)
-          onSuccess(selectedNumber, betAmount)
+          if (onSuccess) {
+            onSuccess(selectedNumber, betAmount)
+          }
 
           // Reset form
           setSelectedNumber('')
           setBetAmount(10000)
+
+          // Invalidate relevant queries
+          queryClient.invalidateQueries({ queryKey: ['profile'] })
         },
         onError: (error: any) => {
           setConfirmDialogOpen(false)
@@ -161,12 +163,24 @@ export default function BetForm({
         </div>
       </div>
 
+      <div className='flex justify-between items-center p-4 bg-gray-50 rounded-lg'>
+        <span className='text-gray-700'>Số dư hiện tại:</span>
+        <span className='font-medium text-green-600'>
+          {formatCurrency(balance)}
+        </span>
+      </div>
+
       <div>
         <Button
           variant='success'
           size='lg'
           className='w-full'
-          disabled={isSubmitting || !selectedNumber.trim() || betAmount < 10000}
+          disabled={
+            isSubmitting ||
+            !selectedNumber.trim() ||
+            betAmount < 10000 ||
+            balance < betAmount
+          }
           onClick={handlePlaceBet}>
           {isSubmitting ? 'Đang xử lý...' : 'Đặt cược'}
         </Button>
@@ -175,7 +189,6 @@ export default function BetForm({
       {/* Confirm Dialog */}
       <Dialog
         open={confirmDialogOpen}
-        // onOpenChange={setConfirmDialogOpen}
         onClose={() => setConfirmDialogOpen(false)}
         title='Xác nhận đặt cược'
         description='Bạn có chắc chắn muốn đặt cược với thông tin dưới đây?'>

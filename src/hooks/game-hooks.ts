@@ -1,9 +1,11 @@
+// src/hooks/game-hooks.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import { GameRound, Bet } from '@/types/database'
+import { useEffect } from 'react'
 
-// Keys for React Query caching
+// Keys cho React Query caching
 export const gameKeys = {
   all: ['games'] as const,
   lists: () => [...gameKeys.all, 'list'] as const,
@@ -18,10 +20,12 @@ export const gameKeys = {
  * Hook để lấy danh sách các game rounds
  */
 export const useGameRounds = (
-  status?: 'pending' | 'active' | 'completed' | 'cancelled'
+  status?: 'pending' | 'active' | 'completed' | 'cancelled',
+  page = 1,
+  limit = 10
 ) => {
   return useQuery({
-    queryKey: gameKeys.list({ status }),
+    queryKey: gameKeys.list({ status, page, limit }),
     queryFn: async () => {
       let query = supabase
         .from('game_rounds')
@@ -29,18 +33,29 @@ export const useGameRounds = (
           `
           *,
           creator:created_by (phone)
-        `
+        `,
+          { count: 'exact' }
         )
         .order('start_time', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1)
 
       if (status) {
         query = query.eq('status', status)
       }
 
-      const { data, error } = await query
+      const { data, error, count } = await query
 
       if (error) throw error
-      return data as GameRound[]
+
+      return {
+        data: data as GameRound[],
+        pagination: {
+          page,
+          limit,
+          totalRecords: count || 0,
+          totalPages: Math.ceil((count || 0) / limit),
+        },
+      }
     },
   })
 }
@@ -122,31 +137,156 @@ export const useUserBets = (userId: string) => {
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      return data as Bet[]
+      return data
     },
     enabled: !!userId,
   })
 }
 
 /**
- * Hook để tạo bet mới
+ * Hook để tạo game round mới (Admin)
+ */
+export const useCreateGameRound = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (gameData: Partial<GameRound>) => {
+      const { data, error } = await supabase
+        .from('game_rounds')
+        .insert({
+          created_by: gameData.created_by || '',
+          start_time: gameData.start_time || new Date().toISOString(),
+          status: gameData.status || 'pending',
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      return data as GameRound
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+      toast.success('Tạo lượt chơi mới thành công!')
+    },
+    onError: (error: any) => {
+      console.error('Error creating game round:', error)
+      toast.error(error.message || 'Không thể tạo lượt chơi. Vui lòng thử lại.')
+    },
+  })
+}
+
+/**
+ * Hook để lấy danh sách các game rounds với real-time updates
+ */
+export const useGameRoundsRealtime = (
+  status?: 'pending' | 'active' | 'completed' | 'cancelled',
+  page = 1,
+  limit = 10
+) => {
+  const queryClient = useQueryClient()
+
+  // Query để lấy dữ liệu ban đầu
+  const query = useQuery({
+    queryKey: gameKeys.list({ status, page, limit }),
+    queryFn: async () => {
+      let query = supabase
+        .from('game_rounds')
+        .select(
+          `
+          *,
+          creator:created_by (phone)
+        `,
+          { count: 'exact' }
+        )
+        .order('start_time', { ascending: false })
+        .range((page - 1) * limit, page * limit - 1)
+
+      if (status) {
+        query = query.eq('status', status)
+      }
+
+      const { data, error, count } = await query
+
+      if (error) throw error
+
+      return {
+        data: data as GameRound[],
+        pagination: {
+          page,
+          limit,
+          totalRecords: count || 0,
+          totalPages: Math.ceil((count || 0) / limit),
+        },
+      }
+    },
+  })
+
+  // Thiết lập real-time subscription
+  useEffect(() => {
+    const subscription = supabase
+      .channel('game_rounds_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_rounds',
+          filter: status ? `status=eq.${status}` : undefined,
+        },
+        (payload) => {
+          // Khi có thay đổi, cập nhật cache
+          queryClient.invalidateQueries({
+            queryKey: gameKeys.list({ status, page, limit }),
+          })
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription khi component unmount
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [queryClient, status, page, limit])
+
+  return query
+}
+
+/**
+ * Hook để lấy chi tiết game round với các bets và thông tin liên quan
+ */
+export const useGameRoundDetails = (gameId: string, userId: string) => {
+  return useQuery({
+    queryKey: [...gameKeys.detail(gameId), 'details', userId],
+    queryFn: async () => {
+      const response = await fetch(`/api/game-rounds/${gameId}`)
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Error fetching game round details')
+      }
+
+      return await response.json()
+    },
+    enabled: !!gameId && !!userId,
+  })
+}
+
+/**
+ * Hook để đặt cược
  */
 export const usePlaceBet = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({
-      userId,
       gameRoundId,
       selectedNumber,
       amount,
     }: {
-      userId: string
       gameRoundId: string
       selectedNumber: string
       amount: number
     }) => {
-      // Sử dụng Next.js API thay vì trực tiếp gọi Supabase function
       const response = await fetch('/api/game-rounds/bets', {
         method: 'POST',
         headers: {
@@ -164,25 +304,138 @@ export const usePlaceBet = () => {
         throw new Error(errorData.error || 'Error placing bet')
       }
 
-      const data = await response.json()
-      return data
+      return await response.json()
+    },
+    onMutate: async (variables) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: [`games`, 'detail', variables.gameRoundId, 'details'],
+      })
+
+      // Snapshot the previous value
+      const previousData = queryClient.getQueryData([
+        `games`,
+        'detail',
+        variables.gameRoundId,
+        'details',
+      ])
+
+      // Optimistically update the user balance and add the new bet
+      queryClient.setQueryData(
+        [`games`, 'detail', variables.gameRoundId, 'details'],
+        (old: any) => {
+          if (!old) return old
+
+          // Create a new bet object
+          const newBet = {
+            id: `temp-${Date.now()}`,
+            user_id: 'current-user',
+            game_round_id: variables.gameRoundId,
+            selected_number: variables.selectedNumber,
+            amount: variables.amount,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            is_winner: null,
+          }
+
+          // Add to user bets and all bets
+          return {
+            ...old,
+            userBets: [newBet, ...(old.userBets || [])],
+            bets: [{ ...newBet, user: { phone: 'Bạn' } }, ...(old.bets || [])],
+            userBalance: (old.userBalance || 0) - variables.amount,
+          }
+        }
+      )
+
+      // Also update the user profile
+      queryClient.setQueryData(
+        ['profiles', 'detail', 'current-user'],
+        (old: any) => {
+          if (!old) return old
+          return {
+            ...old,
+            balance: (old.balance || 0) - variables.amount,
+          }
+        }
+      )
+
+      return { previousData }
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          [`games`, 'detail', variables.gameRoundId, 'details'],
+          context.previousData
+        )
+      }
+
+      toast.error(err.message || 'Không thể đặt cược. Vui lòng thử lại.')
+    },
+    onSettled: (data, error, variables) => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries({
+        queryKey: [`games`, 'detail', variables.gameRoundId, 'details'],
+      })
+      queryClient.invalidateQueries({ queryKey: ['profiles'] })
     },
     onSuccess: (data, variables) => {
-      // Invalidate và refetch các queries liên quan
-      queryClient.invalidateQueries({
-        queryKey: gameKeys.bets(variables.gameRoundId),
-      })
-      queryClient.invalidateQueries({
-        queryKey: gameKeys.userBets(variables.userId),
-      })
-      queryClient.invalidateQueries({
-        queryKey: gameKeys.detail(variables.gameRoundId),
-      })
       toast.success('Đặt cược thành công!')
     },
-    onError: (error: any) => {
-      console.error('Error placing bet:', error)
-      toast.error(error.message || 'Không thể đặt cược. Vui lòng thử lại.')
-    },
   })
+}
+
+/**
+ * Hook để theo dõi real-time updates cho một game round
+ */
+export const useGameRoundRealtime = (gameId: string) => {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!gameId) return
+
+    // Subscribe to changes on game_rounds table
+    const gameSubscription = supabase
+      .channel(`game_round_${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_rounds',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: gameKeys.detail(gameId) })
+        }
+      )
+      .subscribe()
+
+    // Subscribe to changes on bets table for this game
+    const betsSubscription = supabase
+      .channel(`bets_for_game_${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bets',
+          filter: `game_round_id=eq.${gameId}`,
+        },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: gameKeys.bets(gameId) })
+          queryClient.invalidateQueries({
+            queryKey: [...gameKeys.detail(gameId), 'details'],
+          })
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscriptions
+    return () => {
+      gameSubscription.unsubscribe()
+      betsSubscription.unsubscribe()
+    }
+  }, [gameId, queryClient])
 }

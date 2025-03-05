@@ -1,13 +1,14 @@
+// src/components/game/game-list.tsx
 'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useGameRounds } from '@/hooks/game-hooks'
+import { useGameRoundsRealtime } from '@/hooks/game-hooks'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loading } from '@/components/ui/loading'
-import { GameRound } from '@/types/database'
+import Pagination from '@/components/ui/pagination'
+import GameListSkeleton from './game-list-skeleton'
 
 interface GamesListProps {
   userId: string
@@ -15,17 +16,25 @@ interface GamesListProps {
 
 export default function GamesList({ userId }: GamesListProps) {
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active')
+  const [page, setPage] = useState(1)
+  const limit = 10 // số item mỗi trang
 
-  const { data: activeGames, isLoading: activeLoading } =
-    useGameRounds('active')
-  const { data: completedGames, isLoading: completedLoading } =
-    useGameRounds('completed')
+  const { data: activeGamesData, isLoading: activeLoading } =
+    useGameRoundsRealtime('active', page, limit)
+  const { data: completedGamesData, isLoading: completedLoading } =
+    useGameRoundsRealtime('completed', page, limit)
 
   const isLoading = activeLoading || completedLoading
 
   if (isLoading) {
-    return <Loading />
+    return <GameListSkeleton />
   }
+
+  const activeGames = activeGamesData?.data || []
+  const activePagination = activeGamesData?.pagination
+
+  const completedGames = completedGamesData?.data || []
+  const completedPagination = completedGamesData?.pagination
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -42,8 +51,12 @@ export default function GamesList({ userId }: GamesListProps) {
       case 'cancelled':
         return <Badge variant='destructive'>Đã hủy</Badge>
       default:
-        return <Badge variant='secondary'>Không xác định</Badge>
+        return <Badge variant='secondary'>{status}</Badge>
     }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
   }
 
   return (
@@ -56,7 +69,10 @@ export default function GamesList({ userId }: GamesListProps) {
               ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-600 hover:text-primary-600'
           }`}
-          onClick={() => setActiveTab('active')}>
+          onClick={() => {
+            setActiveTab('active')
+            setPage(1) // Reset page when changing tabs
+          }}>
           Lượt chơi đang diễn ra
         </button>
         <button
@@ -65,7 +81,10 @@ export default function GamesList({ userId }: GamesListProps) {
               ? 'text-primary-600 border-b-2 border-primary-600'
               : 'text-gray-600 hover:text-primary-600'
           }`}
-          onClick={() => setActiveTab('completed')}>
+          onClick={() => {
+            setActiveTab('completed')
+            setPage(1) // Reset page when changing tabs
+          }}>
           Lượt chơi đã hoàn thành
         </button>
       </div>
@@ -73,7 +92,7 @@ export default function GamesList({ userId }: GamesListProps) {
       {/* Game Lists */}
       {activeTab === 'active' ? (
         <Card title='Lượt chơi đang diễn ra' className='p-6'>
-          {activeGames?.length === 0 ? (
+          {activeGames.length === 0 ? (
             <div className='text-center py-6 text-gray-500'>
               <svg
                 xmlns='http://www.w3.org/2000/svg'
@@ -118,7 +137,7 @@ export default function GamesList({ userId }: GamesListProps) {
                   </tr>
                 </thead>
                 <tbody className='bg-white divide-y divide-gray-200'>
-                  {activeGames?.map((game) => (
+                  {activeGames.map((game) => (
                     <tr key={game.id}>
                       <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900'>
                         {game.id.substring(0, 8)}...
@@ -143,12 +162,23 @@ export default function GamesList({ userId }: GamesListProps) {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination for active games */}
+              {activePagination && activePagination.totalPages > 1 && (
+                <div className='mt-4'>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={activePagination.totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
             </div>
           )}
         </Card>
       ) : (
         <Card title='Lượt chơi đã hoàn thành' className='p-6'>
-          {completedGames?.length === 0 ? (
+          {completedGames.length === 0 ? (
             <div className='text-center py-6 text-gray-500'>
               <svg
                 xmlns='http://www.w3.org/2000/svg'
@@ -190,10 +220,13 @@ export default function GamesList({ userId }: GamesListProps) {
                     <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                       Tổng tiền thưởng
                     </th>
+                    <th className='px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                      Chi tiết
+                    </th>
                   </tr>
                 </thead>
                 <tbody className='bg-white divide-y divide-gray-200'>
-                  {completedGames?.slice(0, 10).map((game) => (
+                  {completedGames.map((game) => (
                     <tr key={game.id}>
                       <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900'>
                         {game.id.substring(0, 8)}...
@@ -212,10 +245,28 @@ export default function GamesList({ userId }: GamesListProps) {
                       <td className='px-4 py-3 whitespace-nowrap text-sm text-gray-900'>
                         {game.total_payout?.toLocaleString()} VND
                       </td>
+                      <td className='px-4 py-3 whitespace-nowrap text-sm font-medium'>
+                        <Link href={`/games/${game.id}`}>
+                          <Button variant='outline' size='sm'>
+                            Xem
+                          </Button>
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination for completed games */}
+              {completedPagination && completedPagination.totalPages > 1 && (
+                <div className='mt-4'>
+                  <Pagination
+                    currentPage={page}
+                    totalPages={completedPagination.totalPages}
+                    onPageChange={handlePageChange}
+                  />
+                </div>
+              )}
             </div>
           )}
         </Card>
