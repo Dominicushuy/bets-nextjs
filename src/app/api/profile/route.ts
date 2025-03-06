@@ -1,100 +1,82 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { NextRequest, NextResponse } from 'next/server'
+// src/app/api/profile/route.ts
+import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
-
-  // Lấy thông tin người dùng đang đăng nhập
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function GET(req: NextRequest) {
   try {
-    // Lấy thông tin profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+    const supabase = createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (profileError) throw profileError
-
-    // Lấy thống kê người dùng
-    const { data: statistics, error: statsError } = await supabase
-      .from('user_statistics')
-      .select('*')
-      .eq('user_id', user.id)
-      .single()
-
-    if (statsError && statsError.code !== 'PGRST116') {
-      // Bỏ qua lỗi không tìm thấy
-      throw statsError
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return NextResponse.json({
-      profile,
-      statistics: statistics || null,
-    })
+    // Lấy thông tin profile
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      return NextResponse.json(
+        { error: profileError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(profile);
   } catch (error: any) {
-    console.error('Error fetching profile:', error)
+    console.error("Error fetching profile:", error);
     return NextResponse.json(
-      { error: error.message || 'Error fetching profile' },
+      { error: error.message || "Error fetching profile" },
       { status: 500 }
-    )
+    );
   }
 }
 
-export async function PATCH(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
-
-  // Lấy thông tin người dùng đang đăng nhập
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function PUT(req: NextRequest) {
   try {
-    const body = await request.json()
-    const { updates } = body
+    const supabase = createClient();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!updates) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Không cho phép cập nhật role thông qua API này
-    delete updates.role
+    const updates = await req.json();
+
+    // Loại bỏ các trường không được phép cập nhật
+    const sanitizedUpdates = {
+      display_name: updates.display_name,
+      avatar_url: updates.avatar_url,
+      preferences: updates.preferences,
+      updated_at: new Date().toISOString(),
+    };
 
     // Cập nhật profile
     const { data, error } = await supabase
-      .from('profiles')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id)
-      .select()
+      .from("profiles")
+      .update(sanitizedUpdates)
+      .eq("id", user.id)
+      .select();
 
-    if (error) throw error
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    return NextResponse.json({ data: data[0] })
+    return NextResponse.json(data[0]);
   } catch (error: any) {
-    console.error('Error updating profile:', error)
+    console.error("Error updating profile:", error);
     return NextResponse.json(
-      { error: error.message || 'Error updating profile' },
+      { error: error.message || "Error updating profile" },
       { status: 500 }
-    )
+    );
   }
 }

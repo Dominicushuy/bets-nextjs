@@ -1,7 +1,7 @@
 // src/components/profile/profile-form.tsx - Cải tiến
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import {
@@ -10,9 +10,9 @@ import {
 } from "@/hooks/profile-hooks";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar } from "@/components/ui/avatar";
-import { Camera, Mail, Phone, User } from "lucide-react";
+import { Mail, Phone, User } from "lucide-react";
 import { ExtendedProfile } from "@/types/database";
+import AvatarUpload from "./avatar-upload";
 
 interface ProfileFormProps {
   initialData: ExtendedProfile;
@@ -21,7 +21,7 @@ interface ProfileFormProps {
 
 export default function ProfileForm({ initialData, userId }: ProfileFormProps) {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     display_name: initialData?.display_name || "",
     email: initialData?.email || "",
@@ -47,34 +47,34 @@ export default function ProfileForm({ initialData, userId }: ProfileFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Xử lý click vào avatar để mở file input
-  const handleAvatarClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
+  // // Xử lý click vào avatar để mở file input
+  // const handleAvatarClick = () => {
+  //   if (fileInputRef.current) {
+  //     fileInputRef.current.click();
+  //   }
+  // };
 
-  // Xử lý upload avatar
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  // // Xử lý upload avatar
+  // const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files[0]) {
+  //     const file = e.target.files[0];
 
-      // Kiểm tra loại file
-      if (!file.type.startsWith("image/")) {
-        toast.error("Vui lòng chọn file hình ảnh");
-        return;
-      }
+  //     // Kiểm tra loại file
+  //     if (!file.type.startsWith("image/")) {
+  //       toast.error("Vui lòng chọn file hình ảnh");
+  //       return;
+  //     }
 
-      // Kiểm tra kích thước file (tối đa 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Kích thước file không được vượt quá 5MB");
-        return;
-      }
+  //     // Kiểm tra kích thước file (tối đa 5MB)
+  //     if (file.size > 5 * 1024 * 1024) {
+  //       toast.error("Kích thước file không được vượt quá 5MB");
+  //       return;
+  //     }
 
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
-    }
-  };
+  //     setAvatarFile(file);
+  //     setAvatarPreview(URL.createObjectURL(file));
+  //   }
+  // };
 
   // Xử lý submit form
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,34 +132,16 @@ export default function ProfileForm({ initialData, userId }: ProfileFormProps) {
   return (
     <Card>
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        <div className="flex flex-col items-center">
-          <div
-            className="relative group cursor-pointer"
-            onClick={handleAvatarClick}
-          >
-            <Avatar
-              src={avatarPreview}
-              alt={formData.display_name || "Avatar"}
-              size="xl"
-              className="h-24 w-24"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera className="h-8 w-8 text-white" />
-              <input
-                ref={fileInputRef}
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarChange}
-                disabled={isProcessing}
-              />
-            </div>
-          </div>
-          <p className="mt-2 text-sm text-gray-500">
-            Nhấp vào ảnh để thay đổi avatar
-          </p>
-        </div>
+        {/* Avatar Upload Section */}
+        <AvatarUpload
+          userId={userId}
+          currentAvatarUrl={avatarPreview || initialData?.avatar_url || null}
+          onAvatarChange={(url) => {
+            setAvatarPreview(url);
+            // Avatar đã được lưu bởi component, không cần setAvatarFile
+          }}
+          size="lg"
+        />
 
         <div className="space-y-4">
           <div className="space-y-1">

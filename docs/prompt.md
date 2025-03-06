@@ -2,35 +2,34 @@ Theo file `plan.md`, hãy giúp tôi tiếp tục phát triển dự án, hãy b
 
 ## 2. Phát triển hệ thống xác thực và quản lý người dùng
 
-### 2.1 Xây dựng hệ thống Authentication (4 ngày)
+### 2.2 Quản lý hồ sơ người dùng (4 ngày)
 
 #### Backend
 
-- [ ] Cấu hình Supabase Auth với email và phone providers
-- [ ] Phát triển function xử lý đăng ký người dùng mới
-- [ ] Tạo trigger tự động tạo profile khi user mới được tạo
-- [ ] Thiết lập policies cho auth.users và profiles
+- [ ] Tạo functions cập nhật profile người dùng
+- [ ] Phát triển trigger kiểm tra cập nhật cấp độ dựa trên điểm kinh nghiệm
+- [ ] Thiết lập policies cho truy cập và cập nhật profiles
 
 #### Frontend Components
 
-- [ ] Xây dựng LoginForm component (email/phone, validation, reCaptcha)
-- [ ] Xây dựng RegisterForm component (validation, điều khoản sử dụng)
-- [ ] Tạo ForgotPasswordForm và ResetPasswordForm components
-- [ ] Xây dựng AuthLayout cho các trang authentication
+- [ ] Xây dựng ProfileForm component (cập nhật thông tin cá nhân)
+- [ ] Tạo AvatarUpload component với preview và crop
+- [ ] Phát triển UserLevelProgress component (hiển thị cấp độ, XP)
+- [ ] Xây dựng UserStatistics component (tỷ lệ thắng, lịch sử cược)
 
 #### API Routes
 
-- [ ] Tạo API route `/api/auth/register` (xử lý đăng ký, gửi email xác nhận)
-- [ ] Tạo API route `/api/auth/login` (xác thực, tạo session)
-- [ ] Tạo API route `/api/auth/verify-email` (xác minh email)
-- [ ] Tạo API route `/api/auth/reset-password` và `/api/auth/forgot-password`
+- [ ] Tạo API route `/api/profile` (get/update thông tin profile)
+- [ ] Tạo API route `/api/profile/avatar` (upload/update avatar)
+- [ ] Tạo API route `/api/profile/level-progress` (lấy thông tin cấp độ, XP)
+- [ ] Tạo API route `/api/profile/change-password` (đổi mật khẩu)
 
 #### Services & Hooks
 
-- [ ] Phát triển AuthService (login, register, reset password)
-- [ ] Xây dựng hook useAuth để quản lý trạng thái authentication
-- [ ] Tạo AuthProvider context để chia sẻ trạng thái đăng nhập
-- [ ] Tạo middleware để kiểm tra authentication cho các routes được bảo vệ
+- [ ] Phát triển ProfileService (getProfile, updateProfile)
+- [ ] Xây dựng hook useProfile để quản lý thông tin profile
+- [ ] Tạo hook useProfileStats để lấy thống kê người dùng
+- [ ] Phát triển hook useAvatar để quản lý upload và cập nhật avatar
 
 Lưu ý:
 
