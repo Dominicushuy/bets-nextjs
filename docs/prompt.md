@@ -1,17 +1,15 @@
-Theo file plan.md, hãy giúp tôi tiếp tục phát triển dự án, hãy bắt đầu từ: 
+Theo file `plan.md`, hãy giúp tôi tiếp tục phát triển dự án, hãy bắt đầu với các công việc sau: 
 
 ## Tuần 8: Payment System
 
-### Ngày 1-2: Payment Request UI
+### Ngày 3-5: Payment Request Backend
 
-1. [ ] Tạo trang Payment Request
-2. [ ] Phát triển Payment Form component
-3. [ ] Xây dựng Upload Proof component
-4. [ ] Tạo hooks quản lý payment requests
+1. [ ] Tạo SQL function update_user_balance
+2. [ ] Tạo API route payment requests `/api/payment-requests`
+3. [ ] Tạo API route xử lý payment request `/api/payment-requests/[id]`
+4. [ ] Thiết lập RLS cho payment requests
 
 Lưu ý:  
 * Kết quả chỉ bao gồm những mục tôi liệt kê ở trên.
 
-* Trước đó tôi đã hoàn thành phần nào các tính năng như bạn thấy trong Github, file nào đã tồn tại cần thiết cập nhật thì cập nhật thêm, còn không thì bỏ qua.
-
-* Đặc biệt hãy kiểm tra file trigger_functions.sql​  trước xem đã tồn tại function hoặc triggers chưa trước khi tạo thêm functions hay trigger mới.
+* Đặc biệt hãy kiểm tra file `trigger_functions.sql`, `policies.sql`​ trước xem đã tồn tại function hoặc triggers chưa trước khi tạo thêm functions hay trigger mới.
