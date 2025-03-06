@@ -10,11 +10,11 @@ import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import BetForm from '@/components/game/bet-form'
 import BetList from '@/components/game/bet-list'
+import BetSuccessDialog from '@/components/game/bet-success-dialog'
 
-// Các import mới phát triển
+// Các import khác
 import GameActivity from './game-activity'
 import GameStatusChecker from './game-status-checker'
 import WinnerAnimation from './winner-animation'
@@ -31,7 +31,7 @@ interface GameDetailProps {
 export default function GameDetail({ gameId, userId }: GameDetailProps) {
   const router = useRouter()
   const [countdown, setCountdown] = useState<number | null>(null)
-  const [betSuccessDialogOpen, setBetSuccessDialogOpen] = useState(false)
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [lastBet, setLastBet] = useState<{
     selectedNumber: string
     amount: number
@@ -63,17 +63,13 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
   // Countdown timer cho game đang active
   useEffect(() => {
     if (game && game.status === 'active') {
-      // Nếu có end_time dự kiến từ server
       let endTime: Date
-
       if (game.end_time) {
         endTime = new Date(game.end_time)
       } else {
-        // Tính toán end_time dựa trên start_time (ví dụ: 5 phút sau khi bắt đầu)
         endTime = new Date(game.start_time)
         endTime.setMinutes(endTime.getMinutes() + 5)
       }
-
       const interval = setInterval(() => {
         const now = new Date()
         const diff = endTime.getTime() - now.getTime()
@@ -118,7 +114,7 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
 
   const handleBetSuccess = (selectedNumber: string, amount: number) => {
     setLastBet({ selectedNumber, amount })
-    setBetSuccessDialogOpen(true)
+    setShowSuccessDialog(true)
   }
 
   // Kiểm tra xem người dùng có cược trúng hay không khi game đã hoàn thành
@@ -129,11 +125,10 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
       )
       if (winningBets.length > 0) {
         const totalWinAmount = winningBets.reduce(
-          (sum: number, bet: Bet) => sum + bet.amount * 80, // 80x theo hệ số từ SQL function
+          (sum: number, bet: Bet) => sum + bet.amount * 80,
           0
         )
         setWinAmount(totalWinAmount)
-        // Hiển thị hiệu ứng chiến thắng với delay nhẹ
         setTimeout(() => {
           setShowWinnerAnimation(true)
         }, 1000)
@@ -332,11 +327,11 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
             <div className='p-6'>
               <div className='flex justify-between items-center mb-4'>
                 <h3 className='text-lg font-medium text-gray-900'>Đặt cược</h3>
-                {game.status === 'active' ? (
-                  <Badge variant='success'>Có thể đặt cược</Badge>
-                ) : (
-                  <Badge variant='destructive'>Không thể đặt cược</Badge>
-                )}
+                <GameStatusChecker
+                  gameId={gameId}
+                  currentStatus={game.status}
+                  showStatus={true}
+                />
               </div>
 
               {game.status !== 'active' ? (
@@ -395,41 +390,21 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
             winningNumber={
               game.status === 'completed' ? game.winning_number : null
             }
+            showSearch={true}
+            showFilter={true}
           />
         </div>
       </div>
 
-      {/* Dialog thông báo cược thành công */}
-      <Dialog
-        open={betSuccessDialogOpen}
-        onClose={() => setBetSuccessDialogOpen(false)}
-        title='Đặt cược thành công!'
-        description='Cược của bạn đã được ghi nhận. Chúc bạn may mắn!'>
-        <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
-          <div className='grid grid-cols-2 gap-4'>
-            <div>
-              <p className='text-sm text-gray-500'>Số đã chọn</p>
-              <p className='text-lg font-medium text-gray-900'>
-                {lastBet?.selectedNumber}
-              </p>
-            </div>
-            <div>
-              <p className='text-sm text-gray-500'>Số tiền cược</p>
-              <p className='text-lg font-medium text-gray-900'>
-                {lastBet?.amount?.toLocaleString()} VND
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className='mt-6 flex justify-end'>
-          <Button
-            variant='primary'
-            onClick={() => setBetSuccessDialogOpen(false)}>
-            Đóng
-          </Button>
-        </div>
-      </Dialog>
+      {/* Success Dialog sử dụng component mới */}
+      {lastBet && (
+        <BetSuccessDialog
+          open={showSuccessDialog}
+          onClose={() => setShowSuccessDialog(false)}
+          selectedNumber={lastBet.selectedNumber}
+          amount={lastBet.amount}
+        />
+      )}
     </div>
   )
 }

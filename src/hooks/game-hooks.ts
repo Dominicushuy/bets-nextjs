@@ -255,6 +255,19 @@ export const usePlaceBet = () => {
       selectedNumber: string
       amount: number
     }) => {
+      // Thêm validation ở client
+      if (!selectedNumber || selectedNumber.trim() === '') {
+        throw new Error('Vui lòng chọn số để đặt cược')
+      }
+
+      if (!/^\d+$/.test(selectedNumber)) {
+        throw new Error('Số cược phải là số nguyên dương')
+      }
+
+      if (!amount || amount < 10000) {
+        throw new Error('Số tiền cược tối thiểu là 10,000 VND')
+      }
+
       const response = await fetch('/api/game-rounds/bets', {
         method: 'POST',
         headers: {
@@ -277,12 +290,12 @@ export const usePlaceBet = () => {
     onMutate: async (variables) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({
-        queryKey: [`games`, 'detail', variables.gameRoundId, 'details'],
+        queryKey: ['games', 'detail', variables.gameRoundId],
       })
 
       // Snapshot the previous value
       const previousData = queryClient.getQueryData([
-        `games`,
+        'games',
         'detail',
         variables.gameRoundId,
         'details',
@@ -290,7 +303,7 @@ export const usePlaceBet = () => {
 
       // Optimistically update the user balance and add the new bet
       queryClient.setQueryData(
-        [`games`, 'detail', variables.gameRoundId, 'details'],
+        ['games', 'detail', variables.gameRoundId, 'details'],
         (old: any) => {
           if (!old) return old
 
@@ -311,7 +324,7 @@ export const usePlaceBet = () => {
             ...old,
             userBets: [newBet, ...(old.userBets || [])],
             bets: [{ ...newBet, user: { phone: 'Bạn' } }, ...(old.bets || [])],
-            userBalance: (old.userBalance || 0) - variables.amount,
+            userBalance: Math.max(0, (old.userBalance || 0) - variables.amount),
           }
         }
       )
@@ -323,33 +336,50 @@ export const usePlaceBet = () => {
           if (!old) return old
           return {
             ...old,
-            balance: (old.balance || 0) - variables.amount,
+            balance: Math.max(0, (old.balance || 0) - variables.amount),
           }
         }
       )
 
       return { previousData }
     },
+    onSuccess: (data, variables) => {
+      // Update query cache for game details
+      queryClient.invalidateQueries({
+        queryKey: ['games', 'detail', variables.gameRoundId, 'details'],
+      })
+
+      // Update user profile to reflect new balance
+      queryClient.invalidateQueries({
+        queryKey: ['profiles'],
+      })
+
+      // Update bet history
+      queryClient.invalidateQueries({
+        queryKey: ['bets', { userId: 'current-user' }],
+      })
+
+      toast.success('Đặt cược thành công!', {
+        icon: '🎲',
+        style: {
+          borderRadius: '10px',
+          background: '#10b981',
+          color: '#fff',
+        },
+      })
+    },
     onError: (err, variables, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousData) {
         queryClient.setQueryData(
-          [`games`, 'detail', variables.gameRoundId, 'details'],
+          ['games', 'detail', variables.gameRoundId, 'details'],
           context.previousData
         )
       }
 
-      toast.error(err.message || 'Không thể đặt cược. Vui lòng thử lại.')
-    },
-    onSettled: (data, error, variables) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({
-        queryKey: [`games`, 'detail', variables.gameRoundId, 'details'],
+      toast.error(err.message || 'Không thể đặt cược. Vui lòng thử lại.', {
+        icon: '❌',
       })
-      queryClient.invalidateQueries({ queryKey: ['profiles'] })
-    },
-    onSuccess: (data, variables) => {
-      toast.success('Đặt cược thành công!')
     },
   })
 }

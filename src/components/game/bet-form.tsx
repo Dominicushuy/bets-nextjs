@@ -1,4 +1,4 @@
-// src/components/game/bet-form.tsx - Cập nhật validation
+// src/components/game/bet-form.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -8,6 +8,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'react-hot-toast'
+import { AlertCircle } from 'lucide-react'
 
 interface BetFormProps {
   gameId: string
@@ -128,8 +129,9 @@ export default function BetForm({
   return (
     <div className='space-y-6'>
       {error && (
-        <div className='p-4 bg-red-100 border border-red-200 text-red-700 rounded-lg'>
-          {error}
+        <div className='p-4 bg-red-100 border border-red-200 text-red-700 rounded-lg flex items-start'>
+          <AlertCircle className='h-5 w-5 mr-2 mt-0.5 flex-shrink-0' />
+          <span>{error}</span>
         </div>
       )}
 
@@ -143,9 +145,9 @@ export default function BetForm({
               key={num}
               type='button'
               onClick={() => setSelectedNumber(num)}
-              className={`px-4 py-2 rounded-md ${
+              className={`px-4 py-2 rounded-md transition-all duration-200 ${
                 selectedNumber === num
-                  ? 'bg-primary-500 text-white'
+                  ? 'bg-primary-500 text-white shadow-md'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
               }`}
               disabled={disabled || isSubmitting}>
@@ -153,18 +155,27 @@ export default function BetForm({
             </button>
           ))}
         </div>
-        <input
-          type='text'
-          value={selectedNumber}
-          onChange={(e) => setSelectedNumber(e.target.value)}
-          className={`w-full px-4 py-3 text-lg text-center border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium
-            ${validationErrors.number ? 'border-red-500' : 'border-gray-300'}`}
-          placeholder='Nhập số bạn chọn'
-          disabled={disabled || isSubmitting}
-        />
-        {validationErrors.number && (
-          <p className='mt-1 text-sm text-red-600'>{validationErrors.number}</p>
-        )}
+        <div className='relative'>
+          <input
+            type='text'
+            value={selectedNumber}
+            onChange={(e) => setSelectedNumber(e.target.value)}
+            className={`w-full px-4 py-3 text-lg text-center border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium transition-all duration-200
+              ${
+                validationErrors.number
+                  ? 'border-red-500 ring-1 ring-red-500'
+                  : 'border-gray-300'
+              }`}
+            placeholder='Nhập số bạn chọn'
+            disabled={disabled || isSubmitting}
+          />
+          {validationErrors.number && (
+            <p className='mt-1 text-sm text-red-600 flex items-center'>
+              <AlertCircle className='h-4 w-4 mr-1' />
+              {validationErrors.number}
+            </p>
+          )}
+        </div>
       </div>
 
       <div>
@@ -177,46 +188,53 @@ export default function BetForm({
               key={amount}
               type='button'
               onClick={() => setBetAmount(amount)}
-              className={`px-3 py-1 rounded-md ${
+              className={`px-3 py-1 rounded-md transition-all duration-200 ${
                 betAmount === amount
-                  ? 'bg-primary-500 text-white'
+                  ? 'bg-primary-500 text-white shadow-md'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}
+              } ${amount > balance ? 'opacity-50 cursor-not-allowed' : ''}`}
               disabled={disabled || isSubmitting || amount > balance}>
               {amount.toLocaleString()} VND
             </button>
           ))}
         </div>
-        <div className='flex space-x-2'>
+        <div className='flex items-center space-x-2'>
           <button
             type='button'
-            className='px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 font-bold text-xl'
+            className='px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 font-bold text-xl transition-colors duration-150'
             onClick={() => setBetAmount(Math.max(10000, betAmount - 10000))}
-            disabled={disabled || isSubmitting}>
+            disabled={disabled || isSubmitting || betAmount <= 10000}>
             -
           </button>
-          <input
-            type='number'
-            min='10000'
-            step='10000'
-            value={betAmount}
-            onChange={(e) => setBetAmount(Number(e.target.value))}
-            className={`w-full px-4 py-3 text-lg text-center border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium
-              ${
-                validationErrors.amount ? 'border-red-500' : 'border-gray-300'
-              }`}
-            disabled={disabled || isSubmitting}
-          />
+          <div className='relative flex-1'>
+            <input
+              type='number'
+              min='10000'
+              step='10000'
+              value={betAmount}
+              onChange={(e) => setBetAmount(Number(e.target.value))}
+              className={`w-full px-4 py-3 text-lg text-center border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium transition-all duration-200
+                ${
+                  validationErrors.amount
+                    ? 'border-red-500 ring-1 ring-red-500'
+                    : 'border-gray-300'
+                }`}
+              disabled={disabled || isSubmitting}
+            />
+          </div>
           <button
             type='button'
-            className='px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 font-bold text-xl'
+            className='px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 font-bold text-xl transition-colors duration-150'
             onClick={() => setBetAmount(betAmount + 10000)}
-            disabled={disabled || isSubmitting}>
+            disabled={disabled || isSubmitting || betAmount + 10000 > balance}>
             +
           </button>
         </div>
         {validationErrors.amount ? (
-          <p className='mt-1 text-sm text-red-600'>{validationErrors.amount}</p>
+          <p className='mt-1 text-sm text-red-600 flex items-center'>
+            <AlertCircle className='h-4 w-4 mr-1' />
+            {validationErrors.amount}
+          </p>
         ) : (
           <div className='mt-1 text-sm text-gray-500'>
             Số tiền cược tối thiểu: 10,000 VND
@@ -231,11 +249,11 @@ export default function BetForm({
         </span>
       </div>
 
-      <div>
+      <div className='pt-2'>
         <Button
           variant='success'
           size='lg'
-          className='w-full'
+          className='w-full rounded-lg transition-all duration-200 shadow-sm hover:shadow-md'
           disabled={disabled || isSubmitting || !isValid}
           onClick={handlePlaceBet}>
           {isSubmitting ? 'Đang xử lý...' : 'Đặt cược'}
