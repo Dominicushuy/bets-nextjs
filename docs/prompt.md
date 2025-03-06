@@ -1,13 +1,13 @@
 Theo file plan.md, hãy giúp tôi tiếp tục phát triển dự án, hãy bắt đầu từ: 
 
-## Tuần 7: Reward System
+## Tuần 8: Payment System
 
-### Ngày 1-2: Reward UI
+### Ngày 1-2: Payment Request UI
 
-1. [ ] Tạo trang Rewards
-2. [ ] Phát triển Reward Card component
-3. [ ] Xây dựng Reward QR component
-4. [ ] Tạo hooks quản lý rewards
+1. [ ] Tạo trang Payment Request
+2. [ ] Phát triển Payment Form component
+3. [ ] Xây dựng Upload Proof component
+4. [ ] Tạo hooks quản lý payment requests
 
 Lưu ý:  
 * Kết quả chỉ bao gồm những mục tôi liệt kê ở trên.
