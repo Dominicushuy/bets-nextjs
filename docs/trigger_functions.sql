@@ -610,6 +610,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function để lấy thống kê game
+-- Cập nhật function get_game_stats để cung cấp thêm chi tiết
 CREATE OR REPLACE FUNCTION get_game_stats(p_game_id UUID)
 RETURNS JSONB AS $$
 DECLARE
@@ -619,6 +620,8 @@ DECLARE
   v_total_payout NUMERIC;
   v_game_status TEXT;
   v_winning_number TEXT;
+  v_most_bet_numbers JSONB;
+  v_bet_amount_distribution JSONB;
 BEGIN
   -- Lấy thông tin game
   SELECT status, winning_number, COALESCE(total_bets, 0), COALESCE(total_payout, 0)
@@ -646,13 +649,49 @@ BEGIN
     v_total_winners := 0;
   END IF;
   
+  -- Lấy top 5 số được đặt nhiều nhất
+  WITH number_counts AS (
+    SELECT selected_number, COUNT(*) AS bet_count
+    FROM bets
+    WHERE game_round_id = p_game_id
+    GROUP BY selected_number
+    ORDER BY bet_count DESC
+    LIMIT 5
+  )
+  SELECT json_agg(json_build_object('number', selected_number, 'count', bet_count))
+  INTO v_most_bet_numbers
+  FROM number_counts;
+  
+  -- Phân phối số tiền đặt cược
+  WITH amount_ranges AS (
+    SELECT 
+      CASE 
+        WHEN amount < 50000 THEN 'under_50k'
+        WHEN amount >= 50000 AND amount < 100000 THEN '50k_100k'
+        WHEN amount >= 100000 AND amount < 500000 THEN '100k_500k'
+        WHEN amount >= 500000 AND amount < 1000000 THEN '500k_1m'
+        ELSE 'over_1m'
+      END AS range,
+      COUNT(*) AS bet_count
+    FROM bets
+    WHERE game_round_id = p_game_id
+    GROUP BY range
+  )
+  SELECT json_object_agg(range, bet_count)
+  INTO v_bet_amount_distribution
+  FROM amount_ranges;
+  
   RETURN jsonb_build_object(
     'totalPlayers', v_total_players,
     'totalWinners', v_total_winners,
     'totalBets', v_total_bets,
     'totalPayout', v_total_payout,
     'gameStatus', v_game_status,
-    'winningNumber', v_winning_number
+    'winningNumber', v_winning_number,
+    'mostBetNumbers', COALESCE(v_most_bet_numbers, '[]'::jsonb),
+    'betAmountDistribution', COALESCE(v_bet_amount_distribution, '{}'::jsonb),
+    'winRate', CASE WHEN v_total_players > 0 THEN (v_total_winners::float / v_total_players) * 100 ELSE 0 END,
+    'profit', v_total_bets - v_total_payout
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -946,6 +985,108 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- ================================================================
+-- Function để cập nhật kinh nghiệm và cấp độ người dùng khi thắng lớn
+CREATE OR REPLACE FUNCTION update_user_level_on_big_win()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_current_level INTEGER;
+  v_next_level_req INTEGER;
+  v_bonus_xp INTEGER;
+BEGIN
+  -- Chỉ áp dụng khi reward lớn (> 1,000,000 VND)
+  IF NEW.amount >= 1000000 THEN
+    -- Tính điểm kinh nghiệm bonus dựa trên số tiền thắng
+    v_bonus_xp := FLOOR(NEW.amount / 100000); -- 1 XP cho mỗi 100K thắng được
+    
+    -- Cập nhật điểm kinh nghiệm
+    UPDATE profiles
+    SET 
+      experience_points = experience_points + v_bonus_xp,
+      updated_at = NOW()
+    WHERE id = NEW.user_id
+    RETURNING level INTO v_current_level;
+    
+    -- Kiểm tra có thể lên cấp hay không
+    SELECT experience_required INTO v_next_level_req
+    FROM user_levels
+    WHERE level = v_current_level + 1;
+    
+    IF v_next_level_req IS NOT NULL THEN
+      -- Kiểm tra và cập nhật level nếu đủ điều kiện
+      UPDATE profiles p
+      SET 
+        level = v_current_level + 1,
+        updated_at = NOW()
+      FROM (
+        SELECT experience_points FROM profiles WHERE id = NEW.user_id
+      ) AS user_exp
+      WHERE p.id = NEW.user_id AND user_exp.experience_points >= v_next_level_req;
+      
+      -- Thêm thông báo lên cấp nếu đủ điều kiện
+      IF FOUND THEN
+        INSERT INTO notifications (
+          user_id,
+          title,
+          message,
+          type,
+          is_read,
+          created_at
+        ) VALUES (
+          NEW.user_id,
+          'Chúc mừng! Bạn đã lên cấp',
+          'Bạn đã đạt cấp độ ' || (v_current_level + 1) || ' nhờ thành tích thắng lớn!',
+          'system',
+          false,
+          NOW()
+        );
+      END IF;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Đăng ký trigger
+DROP TRIGGER IF EXISTS on_big_win_level_up ON reward_codes;
+CREATE TRIGGER on_big_win_level_up
+AFTER INSERT ON reward_codes
+FOR EACH ROW
+EXECUTE FUNCTION update_user_level_on_big_win();
+
+-- ================================================================
+-- Function để lấy phân phối số lượng đặt cược
+CREATE OR REPLACE FUNCTION get_number_distribution(p_game_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+  v_result JSONB;
+BEGIN
+  WITH number_stats AS (
+    SELECT 
+      selected_number,
+      COUNT(*) AS bet_count,
+      SUM(amount) AS total_amount,
+      COUNT(DISTINCT user_id) AS unique_users
+    FROM bets
+    WHERE game_round_id = p_game_id
+    GROUP BY selected_number
+    ORDER BY bet_count DESC
+  )
+  SELECT json_object_agg(
+    selected_number, 
+    json_build_object(
+      'count', bet_count,
+      'totalAmount', total_amount,
+      'uniqueUsers', unique_users
+    )
+  )
+  INTO v_result
+  FROM number_stats;
+  
+  RETURN COALESCE(v_result, '{}'::jsonb);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ================================================================
 -- END OF FILE

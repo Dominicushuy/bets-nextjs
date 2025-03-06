@@ -9,10 +9,11 @@ import { formatCurrency } from '@/lib/utils'
 import { Loading } from '@/components/ui/loading'
 import Link from 'next/link'
 import confetti from 'canvas-confetti'
-import { Trophy, ArrowLeft } from 'lucide-react'
+import { Trophy, ArrowLeft, Share2 } from 'lucide-react'
 import { RewardCode } from '@/types/database'
 import GameResultStats from './game-result-stats'
 import GameRewardCard from './game-reward-card'
+import toast from 'react-hot-toast'
 
 interface GameResultDetailProps {
   gameId: string
@@ -67,6 +68,36 @@ export default function GameResultDetail({
       }, 1000)
     }
   }, [data?.isWinner])
+
+  // Function để chia sẻ kết quả
+  const shareResults = async (
+    gameId: string,
+    winningNumber: string,
+    isWinner: boolean,
+    amount: number
+  ) => {
+    try {
+      const shareText = isWinner
+        ? `Tôi vừa thắng ${formatCurrency(
+            amount
+          )} với số ${winningNumber} trên Game Cá Cược! 🎮 🎯`
+        : `Lượt chơi vừa kết thúc với số ${winningNumber} trên Game Cá Cược! Hãy tham gia cùng tôi! 🎮`
+
+      if (navigator.share) {
+        await navigator.share({
+          title: 'Kết quả Game Cá Cược',
+          text: shareText,
+          url: `${window.location.origin}/games/${gameId}`,
+        })
+      } else {
+        // Fallback là copy vào clipboard
+        await navigator.clipboard.writeText(shareText)
+        toast.success('Đã sao chép kết quả vào clipboard!')
+      }
+    } catch (err) {
+      console.error('Không thể chia sẻ:', err)
+    }
+  }
 
   if (isLoading) {
     return <Loading />
@@ -213,6 +244,21 @@ export default function GameResultDetail({
             <Link href='/history'>
               <Button variant='outline'>Xem lịch sử</Button>
             </Link>
+
+            <Button
+              variant='outline'
+              onClick={() =>
+                shareResults(
+                  gameId,
+                  gameRound.winning_number,
+                  isWinner,
+                  totalWinAmount
+                )
+              }
+              className='flex items-center'>
+              <Share2 className='mr-2 h-4 w-4' />
+              Chia sẻ
+            </Button>
           </div>
         </div>
       </Card>

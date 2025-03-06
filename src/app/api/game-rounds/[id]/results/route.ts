@@ -133,6 +133,25 @@ export async function GET(
       console.error('Error fetching active games:', activeGamesError)
     }
 
+    // Thêm logic để kiểm tra và đánh dấu thông báo đã đọc
+    const markNotificationsAsRead = async (
+      supabase: any,
+      userId: string,
+      gameId: string
+    ) => {
+      try {
+        await supabase
+          .from('notifications')
+          .update({ is_read: true })
+          .eq('user_id', userId)
+          .eq('related_resource_id', gameId)
+          .eq('type', 'game')
+      } catch (error) {
+        console.warn('Error marking notifications as read:', error)
+      }
+    }
+    await markNotificationsAsRead(supabase, user.id, gameId)
+
     return NextResponse.json({
       gameRound,
       userBets: userBets || [],

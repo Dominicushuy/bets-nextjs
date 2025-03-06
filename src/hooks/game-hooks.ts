@@ -492,13 +492,18 @@ export const useGameRoundResults = (gameId: string) => {
     queryKey: [...gameKeys.detail(gameId), 'results'],
     queryFn: async () => {
       const response = await fetch(`/api/game-rounds/${gameId}/results`)
-
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Error fetching game results')
+        throw new Error(error.error || 'Failed to fetch game results')
       }
 
-      return await response.json()
+      // Cập nhật cache cho kết quả trò chơi
+      const data = await response.json()
+
+      // Invalidate các query liên quan đến thông báo vì chúng đã được đánh dấu là đã đọc
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+
+      return data
     },
     enabled: !!gameId,
     refetchOnWindowFocus: false,
@@ -701,4 +706,23 @@ export function useGameRoundRealtimeStatus(gameId: string) {
     isActive: status === 'active',
     isCancelled: status === 'cancelled',
   }
+}
+
+// Bổ sung hook để lấy phân phối số lượng đặt cược
+export function useGameNumberDistribution(gameId: string) {
+  return useQuery({
+    queryKey: ['games', 'number-distribution', gameId],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/game-rounds/${gameId}/number-distribution`
+      )
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch number distribution')
+      }
+      return await response.json()
+    },
+    enabled: !!gameId,
+    staleTime: 30 * 1000, // 30 giây
+  })
 }
