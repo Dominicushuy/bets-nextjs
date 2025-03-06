@@ -1,20 +1,27 @@
-// src/components/game/bet-form.tsx
+// src/components/game/bet-form.tsx - Cập nhật validation
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePlaceBet } from '@/hooks/game-hooks'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { formatCurrency } from '@/lib/utils'
+import { toast } from 'react-hot-toast'
 
 interface BetFormProps {
   gameId: string
   balance: number
   onSuccess?: (selectedNumber: string, amount: number) => void
+  disabled?: boolean
 }
 
-export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
+export default function BetForm({
+  gameId,
+  balance,
+  onSuccess,
+  disabled = false,
+}: BetFormProps) {
   // Common numbers that users typically choose
   const commonNumbers = ['7', '8', '9', '68', '88', '99']
 
@@ -25,14 +32,47 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
   const [betAmount, setBetAmount] = useState(10000)
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [error, setError] = useState('')
+  const [validationErrors, setValidationErrors] = useState<{
+    number?: string
+    amount?: string
+  }>({})
 
   const queryClient = useQueryClient()
   const { mutate: placeBet, isPending: isSubmitting } = usePlaceBet()
 
+  // Validation effect
+  useEffect(() => {
+    const errors: { number?: string; amount?: string } = {}
+
+    // Validate number
+    if (selectedNumber) {
+      if (!/^\d+$/.test(selectedNumber)) {
+        errors.number = 'Số phải là số nguyên dương'
+      }
+    }
+
+    // Validate amount
+    if (betAmount) {
+      if (betAmount < 10000) {
+        errors.amount = 'Số tiền cược tối thiểu là 10,000 VND'
+      } else if (betAmount > balance) {
+        errors.amount = 'Số dư không đủ'
+      }
+    }
+
+    setValidationErrors(errors)
+  }, [selectedNumber, betAmount, balance])
+
+  const isValid =
+    !validationErrors.number &&
+    !validationErrors.amount &&
+    selectedNumber.trim() !== ''
+
   const handlePlaceBet = () => {
-    // Validate input
+    // Reset error state
     setError('')
 
+    // Basic validation
     if (!selectedNumber.trim()) {
       setError('Vui lòng nhập số bạn muốn đặt cược')
       return
@@ -72,10 +112,14 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
 
           // Invalidate relevant queries
           queryClient.invalidateQueries({ queryKey: ['profile'] })
+
+          // Show success toast
+          toast.success('Đặt cược thành công!')
         },
         onError: (error: any) => {
           setConfirmDialogOpen(false)
           setError(error.message || 'Lỗi khi đặt cược')
+          toast.error(error.message || 'Lỗi khi đặt cược')
         },
       }
     )
@@ -103,7 +147,8 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
                 selectedNumber === num
                   ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}>
+              }`}
+              disabled={disabled || isSubmitting}>
               {num}
             </button>
           ))}
@@ -112,9 +157,14 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
           type='text'
           value={selectedNumber}
           onChange={(e) => setSelectedNumber(e.target.value)}
-          className='w-full px-4 py-3 text-lg text-center border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium'
+          className={`w-full px-4 py-3 text-lg text-center border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium
+            ${validationErrors.number ? 'border-red-500' : 'border-gray-300'}`}
           placeholder='Nhập số bạn chọn'
+          disabled={disabled || isSubmitting}
         />
+        {validationErrors.number && (
+          <p className='mt-1 text-sm text-red-600'>{validationErrors.number}</p>
+        )}
       </div>
 
       <div>
@@ -131,7 +181,8 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
                 betAmount === amount
                   ? 'bg-primary-500 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}>
+              }`}
+              disabled={disabled || isSubmitting || amount > balance}>
               {amount.toLocaleString()} VND
             </button>
           ))}
@@ -140,7 +191,8 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
           <button
             type='button'
             className='px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 font-bold text-xl'
-            onClick={() => setBetAmount(Math.max(10000, betAmount - 10000))}>
+            onClick={() => setBetAmount(Math.max(10000, betAmount - 10000))}
+            disabled={disabled || isSubmitting}>
             -
           </button>
           <input
@@ -149,18 +201,27 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
             step='10000'
             value={betAmount}
             onChange={(e) => setBetAmount(Number(e.target.value))}
-            className='w-full px-4 py-3 text-lg text-center border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium'
+            className={`w-full px-4 py-3 text-lg text-center border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 font-medium
+              ${
+                validationErrors.amount ? 'border-red-500' : 'border-gray-300'
+              }`}
+            disabled={disabled || isSubmitting}
           />
           <button
             type='button'
             className='px-4 py-3 bg-gray-200 hover:bg-gray-300 rounded-md text-gray-800 font-bold text-xl'
-            onClick={() => setBetAmount(betAmount + 10000)}>
+            onClick={() => setBetAmount(betAmount + 10000)}
+            disabled={disabled || isSubmitting}>
             +
           </button>
         </div>
-        <div className='mt-1 text-sm text-gray-500'>
-          Số tiền cược tối thiểu: 10,000 VND
-        </div>
+        {validationErrors.amount ? (
+          <p className='mt-1 text-sm text-red-600'>{validationErrors.amount}</p>
+        ) : (
+          <div className='mt-1 text-sm text-gray-500'>
+            Số tiền cược tối thiểu: 10,000 VND
+          </div>
+        )}
       </div>
 
       <div className='flex justify-between items-center p-4 bg-gray-50 rounded-lg'>
@@ -175,12 +236,7 @@ export default function BetForm({ gameId, balance, onSuccess }: BetFormProps) {
           variant='success'
           size='lg'
           className='w-full'
-          disabled={
-            isSubmitting ||
-            !selectedNumber.trim() ||
-            betAmount < 10000 ||
-            balance < betAmount
-          }
+          disabled={disabled || isSubmitting || !isValid}
           onClick={handlePlaceBet}>
           {isSubmitting ? 'Đang xử lý...' : 'Đặt cược'}
         </Button>

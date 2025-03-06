@@ -42,6 +42,16 @@ export async function GET(
       )
     }
 
+    // Lấy tất cả lượt đặt cược trong game này
+    const { data: allBets, error: allBetsError } = await supabase
+      .from('bets')
+      .select('*')
+      .eq('game_round_id', gameId)
+
+    if (allBetsError) {
+      console.error('Error fetching all bets:', allBetsError)
+    }
+
     // Lấy thông tin thắng thua của người dùng hiện tại
     const { data: userBets, error: userBetsError } = await supabase
       .from('bets')
@@ -78,7 +88,16 @@ export async function GET(
     const hasWinningBets =
       userBets?.some((bet) => bet.is_winner === true) || false
 
-    // Lấy số liệu tổng hợp
+    // Tổng số người chơi và người thắng
+    const totalPlayers = [...new Set(allBets?.map((bet) => bet.user_id) || [])]
+      .length
+    const totalWinners = [
+      ...new Set(
+        allBets?.filter((bet) => bet.is_winner)?.map((bet) => bet.user_id) || []
+      ),
+    ].length
+
+    // Lấy số liệu tổng hợp từ function SQL
     const { data: stats, error: statsError } = await supabase.rpc(
       'get_game_stats',
       { p_game_id: gameId }
@@ -95,8 +114,8 @@ export async function GET(
       isWinner: hasWinningBets,
       totalWinAmount,
       stats: stats || {
-        totalPlayers: 0,
-        totalWinners: 0,
+        totalPlayers: totalPlayers,
+        totalWinners: totalWinners,
         totalBets: gameRound.total_bets || 0,
         totalPayout: gameRound.total_payout || 0,
       },

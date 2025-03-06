@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import { GameRound, Bet } from '@/types/database'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 // Keys cho React Query caching
 export const gameKeys = {
@@ -584,4 +584,69 @@ export const useDeleteGameRound = () => {
       toast.error(error.message || 'Không thể xóa lượt chơi. Vui lòng thử lại.')
     },
   })
+}
+
+/**
+ * Hook để theo dõi trạng thái game theo thời gian thực
+ * Kết hợp data từ API và subscription
+ */
+export function useGameRoundRealtimeStatus(gameId: string) {
+  const queryClient = useQueryClient()
+  const [status, setStatus] = useState<string | null>(null)
+  const [winningNumber, setWinningNumber] = useState<string | null>(null)
+
+  // Fetch initial data
+  const { data: gameData } = useGameRound(gameId)
+
+  // Set initial status
+  useEffect(() => {
+    if (gameData) {
+      setStatus(gameData.status)
+      setWinningNumber(gameData.winning_number)
+    }
+  }, [gameData])
+
+  // Set up subscription
+  useEffect(() => {
+    if (!gameId) return
+
+    const subscription = supabase
+      .channel(`game_status_${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'game_rounds',
+          filter: `id=eq.${gameId}`,
+        },
+        (payload) => {
+          // Update local state
+          if (payload.new.status !== status) {
+            setStatus(payload.new.status)
+          }
+
+          if (payload.new.winning_number !== winningNumber) {
+            setWinningNumber(payload.new.winning_number)
+          }
+
+          // Invalidate queries to refresh data
+          queryClient.invalidateQueries({ queryKey: gameKeys.detail(gameId) })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [gameId, queryClient, status, winningNumber])
+
+  return {
+    status,
+    winningNumber,
+    isCompleted: status === 'completed',
+    isPending: status === 'pending',
+    isActive: status === 'active',
+    isCancelled: status === 'cancelled',
+  }
 }

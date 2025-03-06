@@ -21,7 +21,6 @@ import WinnerAnimation from './winner-animation'
 import GameDetailSkeleton from './game-detail-skeleton'
 import GameResultBanner from './game-result-banner'
 import GameResultDetail from './game-result-detail'
-import AdminGameControl from '@/components/admin/games/admin-game-control'
 import { Bet } from '@/types/database'
 
 interface GameDetailProps {
@@ -64,8 +63,17 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
   // Countdown timer cho game đang active
   useEffect(() => {
     if (game && game.status === 'active') {
-      const endTime = new Date()
-      endTime.setMinutes(endTime.getMinutes() + 5)
+      // Nếu có end_time dự kiến từ server
+      let endTime: Date
+
+      if (game.end_time) {
+        endTime = new Date(game.end_time)
+      } else {
+        // Tính toán end_time dựa trên start_time (ví dụ: 5 phút sau khi bắt đầu)
+        endTime = new Date(game.start_time)
+        endTime.setMinutes(endTime.getMinutes() + 5)
+      }
+
       const interval = setInterval(() => {
         const now = new Date()
         const diff = endTime.getTime() - now.getTime()
@@ -121,7 +129,7 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
       )
       if (winningBets.length > 0) {
         const totalWinAmount = winningBets.reduce(
-          (sum: number, bet: Bet) => sum + bet.amount * 80,
+          (sum: number, bet: Bet) => sum + bet.amount * 80, // 80x theo hệ số từ SQL function
           0
         )
         setWinAmount(totalWinAmount)
@@ -210,9 +218,6 @@ export default function GameDetail({ gameId, userId }: GameDetailProps) {
       {game.status === 'completed' && (
         <GameResultDetail gameId={gameId} userId={userId} />
       )}
-
-      {/* Hiển thị control panel cho admin */}
-      {isAdmin && <AdminGameControl game={game} />}
 
       {/* Banner kết quả game nếu có */}
       {game.status === 'completed' && game.winning_number && (
