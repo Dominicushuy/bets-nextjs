@@ -1,19 +1,30 @@
+// src/app/(admin)/admin/games/[id]/page.tsx
+import { Suspense } from 'react'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import AdminGameDetail from '@/components/admin/games/admin-game-detail'
-import { notFound } from 'next/navigation'
+import { Loading } from '@/components/ui/loading'
+import {
+  dehydrate,
+  HydrationBoundary,
+  QueryClient,
+} from '@tanstack/react-query'
 
-export const metadata = {
-  title: 'Chi tiết lượt chơi - Admin',
-  description: 'Xem chi tiết và quản lý lượt chơi',
+interface AdminGameDetailPageProps {
+  params: {
+    id: string
+  }
 }
 
-export default async function GameDetailPage({
+export const metadata = {
+  title: 'Chi tiết lượt chơi - Admin Game Cá Cược',
+  description: 'Quản lý chi tiết lượt chơi trong hệ thống',
+}
+
+export default async function AdminGameDetailPage({
   params,
-}: {
-  params: { id: string }
-}) {
+}: AdminGameDetailPageProps) {
   const gameId = params.id
   const supabase = createServerComponentClient({ cookies })
   const {
@@ -35,21 +46,56 @@ export default async function GameDetailPage({
     redirect('/dashboard')
   }
 
-  // Lấy thông tin lượt chơi
-  const { data: game, error } = await supabase
-    .from('game_rounds')
-    .select('*')
-    .eq('id', gameId)
-    .single()
+  // Prefetch data for initial render
+  const queryClient = new QueryClient()
 
-  if (error || !game) {
-    notFound()
-  }
+  await queryClient.prefetchQuery({
+    queryKey: ['admin', 'games', 'detail', gameId],
+    queryFn: async () => {
+      const { data: gameRound, error: gameError } = await supabase
+        .from('game_rounds')
+        .select(
+          `
+          *,
+          creator:created_by (phone)
+        `
+        )
+        .eq('id', gameId)
+        .single()
+
+      if (gameError) throw gameError
+
+      // Lấy thông tin các bets trong game này
+      const { data: bets, error: betsError } = await supabase
+        .from('bets')
+        .select(
+          `
+          *,
+          user:user_id (
+            phone,
+            display_name
+          )
+        `
+        )
+        .eq('game_round_id', gameId)
+        .order('created_at', { ascending: false })
+
+      if (betsError) throw betsError
+
+      return {
+        gameRound,
+        bets: bets || [],
+      }
+    },
+  })
 
   return (
     <div className='space-y-6'>
-      <h1 className='text-2xl font-bold'>Chi tiết lượt chơi</h1>
-      <AdminGameDetail gameId={gameId} adminId={session.user.id} />
+      <HydrationBoundary state={dehydrate(queryClient)}>
+        <Suspense fallback={<Loading />}>
+          <AdminGameDetail gameId={gameId} userId={session.user.id} />
+        </Suspense>
+      </HydrationBoundary>
     </div>
   )
 }

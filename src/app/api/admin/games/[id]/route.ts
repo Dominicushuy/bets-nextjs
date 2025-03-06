@@ -58,7 +58,7 @@ export async function GET(
     // Lấy thông tin người đặt cược
     const { data: bets, error: betsError } = await supabase
       .from('bets')
-      .select('*, user:user_id(phone)')
+      .select('*, user:user_id(phone, display_name)')
       .eq('game_round_id', gameId)
       .order('created_at', { ascending: false })
 
@@ -132,10 +132,10 @@ export async function PATCH(
       )
     }
 
-    // Chỉ cho phép cập nhật khi lượt chơi ở trạng thái pending
-    if (existingGame.status !== 'pending') {
+    // Chỉ cho phép cập nhật khi lượt chơi ở trạng thái pending hoặc active
+    if (!['pending', 'active'].includes(existingGame.status)) {
       return NextResponse.json(
-        { error: 'Only pending game rounds can be updated' },
+        { error: 'Only pending or active game rounds can be updated' },
         { status: 400 }
       )
     }

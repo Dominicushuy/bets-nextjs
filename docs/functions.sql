@@ -213,3 +213,5 @@ CREATE TRIGGER on_game_completion
 AFTER UPDATE OF status ON game_rounds
 FOR EACH ROW
 EXECUTE FUNCTION update_statistics_on_game_completion();
+
+-- =================================================================================================

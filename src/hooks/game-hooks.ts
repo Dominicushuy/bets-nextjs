@@ -409,7 +409,7 @@ export const useGameRoundRealtime = (gameId: string) => {
 }
 
 /**
- * Hook để kết thúc lượt chơi (admin only)
+ * Hook để kết thúc lượt chơi (Admin only)
  */
 export const useCompleteGameRound = () => {
   const queryClient = useQueryClient()
@@ -431,18 +431,21 @@ export const useCompleteGameRound = () => {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Error completing game round')
+        const error = await response.json()
+        throw new Error(error.error || 'Error completing game round')
       }
 
       return await response.json()
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       // Invalidate queries
       queryClient.invalidateQueries({
         queryKey: gameKeys.detail(variables.gameId),
       })
       queryClient.invalidateQueries({ queryKey: gameKeys.lists() })
+      queryClient.invalidateQueries({
+        queryKey: [...gameKeys.all, 'results'],
+      })
       toast.success('Lượt chơi đã được hoàn thành!')
     },
     onError: (error: any) => {
@@ -475,7 +478,7 @@ export const useGameRoundResults = (gameId: string) => {
 }
 
 /**
- * Hook để tạo lượt chơi mới
+ * Hook để tạo lượt chơi mới (Admin only)
  */
 export const useCreateGameRound = () => {
   const queryClient = useQueryClient()
@@ -509,7 +512,7 @@ export const useCreateGameRound = () => {
 }
 
 /**
- * Hook để cập nhật lượt chơi
+ * Hook để cập nhật lượt chơi (Admin only)
  */
 export const useUpdateGameRound = () => {
   const queryClient = useQueryClient()
@@ -554,7 +557,7 @@ export const useUpdateGameRound = () => {
 }
 
 /**
- * Hook để xóa lượt chơi
+ * Hook để xóa lượt chơi (Admin only)
  */
 export const useDeleteGameRound = () => {
   const queryClient = useQueryClient()

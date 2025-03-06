@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json()
-    const { start_time, status = 'pending' } = body
+    const { start_time, status = 'pending', created_by } = body
 
     if (!start_time) {
       return NextResponse.json(
@@ -150,7 +150,7 @@ export async function POST(req: NextRequest) {
     const { data: newGame, error: createError } = await supabase
       .from('game_rounds')
       .insert({
-        created_by: user.id,
+        created_by: created_by || user.id,
         start_time,
         status,
       })
