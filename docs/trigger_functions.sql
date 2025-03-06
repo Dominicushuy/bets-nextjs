@@ -1089,5 +1089,220 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ================================================================
+-- Functions bổ sung cho Reward Management System
+
+-- Kiểm tra trạng thái hết hạn của reward
+CREATE OR REPLACE FUNCTION is_reward_expired(reward_code TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_expiry_date TIMESTAMP WITH TIME ZONE;
+BEGIN
+  -- Lấy ngày hết hạn từ reward_code
+  SELECT expiry_date INTO v_expiry_date 
+  FROM reward_codes
+  WHERE code = reward_code;
+  
+  -- Nếu không tìm thấy, coi như hết hạn
+  IF v_expiry_date IS NULL THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- So sánh với ngày hiện tại
+  RETURN NOW() > v_expiry_date;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function tạo mã QR cho reward code
+-- Lưu ý: Chỉ trả về dữ liệu để tạo QR, không tạo QR trực tiếp (việc này sẽ làm ở frontend)
+CREATE OR REPLACE FUNCTION generate_reward_qr_data(reward_code TEXT)
+RETURNS JSONB AS $$
+DECLARE
+  v_reward RECORD;
+BEGIN
+  -- Lấy thông tin từ reward_code
+  SELECT id, code, amount, expiry_date, user_id, game_round_id
+  INTO v_reward 
+  FROM reward_codes
+  WHERE code = reward_code;
+  
+  -- Nếu không tìm thấy, return error
+  IF v_reward IS NULL THEN
+    RETURN jsonb_build_object('error', 'Reward code not found');
+  END IF;
+  
+  -- Tạo dữ liệu cho QR code
+  RETURN jsonb_build_object(
+    'code', v_reward.code,
+    'amount', v_reward.amount,
+    'expiry_date', v_reward.expiry_date,
+    'id', v_reward.id
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function lấy thống kê rewards của user
+CREATE OR REPLACE FUNCTION get_user_reward_statistics(p_user_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+  v_total_rewards INTEGER;
+  v_redeemed_count INTEGER;
+  v_pending_count INTEGER;
+  v_expired_count INTEGER;
+  v_total_amount NUMERIC;
+BEGIN
+  -- Tổng số rewards
+  SELECT COUNT(*) INTO v_total_rewards
+  FROM reward_codes
+  WHERE user_id = p_user_id;
+  
+  -- Đã đổi thưởng
+  SELECT COUNT(*) INTO v_redeemed_count
+  FROM reward_codes
+  WHERE user_id = p_user_id AND is_used = TRUE;
+  
+  -- Còn khả dụng (chưa đổi và chưa hết hạn)
+  SELECT COUNT(*) INTO v_pending_count
+  FROM reward_codes
+  WHERE user_id = p_user_id AND is_used = FALSE AND expiry_date > NOW();
+  
+  -- Đã hết hạn
+  SELECT COUNT(*) INTO v_expired_count
+  FROM reward_codes
+  WHERE user_id = p_user_id AND is_used = FALSE AND expiry_date <= NOW();
+  
+  -- Tổng giá trị
+  SELECT COALESCE(SUM(amount), 0) INTO v_total_amount
+  FROM reward_codes
+  WHERE user_id = p_user_id;
+  
+  -- Trả về kết quả
+  RETURN jsonb_build_object(
+    'totalRewards', v_total_rewards,
+    'redeemedCount', v_redeemed_count,
+    'pendingCount', v_pending_count,
+    'expiredCount', v_expired_count,
+    'totalAmount', v_total_amount
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function tạo reward từ game
+CREATE OR REPLACE FUNCTION create_game_reward(
+  p_user_id UUID,
+  p_game_id UUID,
+  p_amount NUMERIC,
+  p_expiry_days INTEGER DEFAULT 7
+)
+RETURNS TEXT AS $$
+DECLARE
+  v_reward_code TEXT;
+BEGIN
+  -- Tạo mã reward ngẫu nhiên
+  v_reward_code := UPPER(
+    SUBSTRING(MD5(p_user_id::TEXT || p_game_id::TEXT || NOW()::TEXT) FROM 1 FOR 8)
+  );
+  
+  -- Chèn vào bảng reward_codes
+  INSERT INTO reward_codes (
+    code,
+    user_id,
+    game_round_id,
+    amount,
+    is_used,
+    expiry_date,
+    created_at,
+    updated_at
+  ) VALUES (
+    v_reward_code,
+    p_user_id,
+    p_game_id,
+    p_amount,
+    FALSE,
+    NOW() + (p_expiry_days || ' days')::INTERVAL,
+    NOW(),
+    NOW()
+  );
+  
+  -- Tạo thông báo cho người dùng
+  INSERT INTO notifications (
+    user_id,
+    title,
+    message,
+    type,
+    related_resource_id,
+    related_resource_type,
+    is_read,
+    created_at
+  ) VALUES (
+    p_user_id,
+    'Phần thưởng mới!',
+    'Bạn đã nhận được phần thưởng ' || p_amount || ' VND từ lượt chơi. Hãy đổi thưởng trước khi hết hạn!',
+    'reward',
+    p_game_id,
+    'game_round',
+    FALSE,
+    NOW()
+  );
+  
+  RETURN v_reward_code;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger để tự động cập nhật thời gian làm mới reward_codes
+CREATE OR REPLACE FUNCTION update_reward_timestamps()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER reward_timestamps_trigger
+BEFORE UPDATE ON reward_codes
+FOR EACH ROW
+EXECUTE FUNCTION update_reward_timestamps();
+
+-- Function gửi thông báo nhắc nhở rewards sắp hết hạn
+CREATE OR REPLACE FUNCTION notify_expiring_rewards()
+RETURNS INTEGER AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_reward RECORD;
+BEGIN
+  -- Tìm các rewards sắp hết hạn trong 24h và chưa được đổi
+  FOR v_reward IN
+    SELECT * FROM reward_codes
+    WHERE is_used = FALSE
+    AND expiry_date BETWEEN NOW() AND NOW() + INTERVAL '24 hours'
+  LOOP
+    -- Thêm thông báo
+    INSERT INTO notifications (
+      user_id,
+      title,
+      message,
+      type,
+      related_resource_id,
+      related_resource_type,
+      is_read,
+      created_at
+    ) VALUES (
+      v_reward.user_id,
+      'Phần thưởng sắp hết hạn!',
+      'Phần thưởng mã ' || v_reward.code || ' trị giá ' || v_reward.amount || ' VND sẽ hết hạn trong vòng 24 giờ tới. Hãy đổi thưởng ngay!',
+      'reward',
+      v_reward.id,
+      'reward_code',
+      FALSE,
+      NOW()
+    );
+    
+    v_count := v_count + 1;
+  END LOOP;
+  
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ================================================================
 -- END OF FILE
 -- ================================================================
