@@ -1,4 +1,4 @@
-// src/components/game/winner-animation.tsx
+// src/components/game/winner-animation.tsx - cập nhật
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti'
 import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
+import { Award, Coins, PlusCircle } from 'lucide-react'
 
 interface WinnerAnimationProps {
   show: boolean
@@ -21,6 +22,7 @@ export default function WinnerAnimation({
   amount,
 }: WinnerAnimationProps) {
   const [step, setStep] = useState(1)
+  const [animationComplete, setAnimationComplete] = useState(false)
 
   // Trigger confetti effect
   useEffect(() => {
@@ -40,7 +42,7 @@ export default function WinnerAnimation({
           angle: 60,
           spread: 55,
           origin: { x: 0 },
-          colors: ['#ff0000', '#00ff00', '#0000ff'],
+          colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'],
         })
 
         confetti({
@@ -48,7 +50,7 @@ export default function WinnerAnimation({
           angle: 120,
           spread: 55,
           origin: { x: 1 },
-          colors: ['#ff0000', '#00ff00', '#0000ff'],
+          colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'],
         })
       }, 150)
 
@@ -67,45 +69,66 @@ export default function WinnerAnimation({
         spread: 100,
         origin: { y: 0.6 },
         colors: ['#FFD700', '#FFA500', '#FF4500', '#FF6347', '#FF0000'],
+        shapes: ['circle', 'square'],
       })
+
+      // Add a slight delay before marking animation as complete
+      setTimeout(() => {
+        setAnimationComplete(true)
+      }, 500)
     }
   }, [step])
+
+  // Pulse animation for the winning number
+  const pulseClass = 'animate-pulse transition-all duration-300'
 
   return (
     <Dialog open={show} onClose={onClose} title='' className='max-w-md'>
       <div className='text-center py-6'>
         {step === 1 && (
-          <>
-            <h2 className='text-2xl font-bold text-primary-600 mb-4'>
+          <div className='space-y-6'>
+            <h2 className='text-2xl font-bold text-primary-600 mb-4 animate-bounce'>
               Chúc mừng!
             </h2>
-            <p className='text-lg mb-4'>Bạn đã thắng cược!</p>
-            <div className='animate-pulse'>
-              <div className='text-3xl font-bold text-success-600 mb-2'>
+            <div className='mb-4'>
+              <Award className='h-16 w-16 text-yellow-500 mx-auto mb-2' />
+              <p className='text-lg mb-4'>Bạn đã thắng cược!</p>
+            </div>
+            <div className={pulseClass}>
+              <div className='text-4xl font-bold text-success-600 mb-2'>
                 {winningNumber}
               </div>
-              <p>Là số trúng thưởng</p>
+              <p className='text-gray-600'>Là số trúng thưởng</p>
             </div>
-          </>
+          </div>
         )}
 
         {step === 2 && (
-          <>
-            <div className='text-2xl font-bold text-success-600 mb-6'>
-              🎉 Bạn vừa thắng 🎉
+          <div className='space-y-6'>
+            <div className='text-2xl font-bold text-success-600 mb-6 flex items-center justify-center'>
+              <Coins className='h-8 w-8 mr-2 text-yellow-500' />
+              <span>Bạn vừa thắng!</span>
             </div>
-            <div className='bg-green-50 p-6 rounded-lg mb-6'>
-              <div className='text-4xl font-bold text-success-600 mb-2 animate-bounce'>
-                {formatCurrency(amount)}
+            <div className='bg-green-50 p-6 rounded-lg mb-6 transform transition-all duration-500 hover:scale-105'>
+              <div className='text-4xl font-bold text-success-600 mb-2 flex items-center justify-center'>
+                <span>{formatCurrency(amount)}</span>
+                <PlusCircle
+                  className={`h-6 w-6 ml-2 text-green-500 ${
+                    animationComplete ? 'animate-bounce' : ''
+                  }`}
+                />
               </div>
               <p className='text-green-600'>
                 Đã được cộng vào tài khoản của bạn!
               </p>
             </div>
-            <Button variant='primary' onClick={onClose} className='mt-4'>
+            <Button
+              variant='primary'
+              onClick={onClose}
+              className='mt-4 px-8 py-2 rounded-full shadow-lg hover:shadow-xl transition-all duration-300'>
               Xem chi tiết
             </Button>
-          </>
+          </div>
         )}
       </div>
     </Dialog>

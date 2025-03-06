@@ -1,4 +1,4 @@
-// src/app/api/game-rounds/[id]/results/route.ts
+// src/app/api/game-rounds/[id]/results/route.ts - cập nhật
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -74,10 +74,7 @@ export async function GET(
       .eq('user_id', user.id)
 
     if (rewardsError) {
-      return NextResponse.json(
-        { error: 'Error fetching rewards' },
-        { status: 500 }
-      )
+      console.error('Error fetching rewards:', rewardsError)
     }
 
     // Tính tổng tiền thắng
@@ -97,14 +94,43 @@ export async function GET(
       ),
     ].length
 
-    // Lấy số liệu tổng hợp từ function SQL
-    const { data: stats, error: statsError } = await supabase.rpc(
-      'get_game_stats',
-      { p_game_id: gameId }
-    )
+    // Lấy số liệu tổng hợp từ function SQL hoặc tính toán thủ công nếu function chưa có
+    let stats
+    try {
+      const { data: statsData, error: statsError } = await supabase.rpc(
+        'get_game_stats',
+        { p_game_id: gameId }
+      )
 
-    if (statsError) {
-      console.error('Error fetching game stats:', statsError)
+      if (statsError) {
+        throw statsError
+      }
+
+      stats = statsData
+    } catch (error) {
+      console.error(
+        'Error calling get_game_stats, using manual calculation:',
+        error
+      )
+      // Tính toán thủ công
+      stats = {
+        totalPlayers,
+        totalWinners,
+        totalBets: gameRound.total_bets || 0,
+        totalPayout: gameRound.total_payout || 0,
+      }
+    }
+
+    // Lấy 3 lượt chơi gần nhất đang diễn ra (cho "Lượt chơi khác" section)
+    const { data: activeGames, error: activeGamesError } = await supabase
+      .from('game_rounds')
+      .select('id, start_time, total_bets, status')
+      .eq('status', 'active')
+      .order('start_time', { ascending: false })
+      .limit(3)
+
+    if (activeGamesError) {
+      console.error('Error fetching active games:', activeGamesError)
     }
 
     return NextResponse.json({
@@ -114,11 +140,12 @@ export async function GET(
       isWinner: hasWinningBets,
       totalWinAmount,
       stats: stats || {
-        totalPlayers: totalPlayers,
-        totalWinners: totalWinners,
+        totalPlayers,
+        totalWinners,
         totalBets: gameRound.total_bets || 0,
         totalPayout: gameRound.total_payout || 0,
       },
+      activeGames: activeGames || [],
     })
   } catch (error: any) {
     console.error('Error fetching game results:', error)

@@ -4,6 +4,10 @@ import { supabase } from '@/lib/supabase/client'
 import { toast } from 'react-hot-toast'
 import { GameRound, Bet } from '@/types/database'
 import { useEffect, useState } from 'react'
+import {
+  showSuccessToast,
+  showErrorToast,
+} from '@/components/notifications/notification-helper'
 
 // Keys cho React Query caching
 export const gameKeys = {
@@ -359,14 +363,7 @@ export const usePlaceBet = () => {
         queryKey: ['bets', { userId: 'current-user' }],
       })
 
-      toast.success('Đặt cược thành công!', {
-        icon: '🎲',
-        style: {
-          borderRadius: '10px',
-          background: '#10b981',
-          color: '#fff',
-        },
-      })
+      showSuccessToast('Đặt cược thành công!')
     },
     onError: (err, variables, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
@@ -377,9 +374,7 @@ export const usePlaceBet = () => {
         )
       }
 
-      toast.error(err.message || 'Không thể đặt cược. Vui lòng thử lại.', {
-        icon: '❌',
-      })
+      showErrorToast(err.message || 'Không thể đặt cược. Vui lòng thử lại.')
     },
   })
 }
@@ -491,7 +486,9 @@ export const useCompleteGameRound = () => {
  * Hook để lấy kết quả chi tiết của một lượt chơi
  */
 export const useGameRoundResults = (gameId: string) => {
-  return useQuery({
+  const queryClient = useQueryClient()
+
+  const { data, isSuccess, ...rest } = useQuery({
     queryKey: [...gameKeys.detail(gameId), 'results'],
     queryFn: async () => {
       const response = await fetch(`/api/game-rounds/${gameId}/results`)
@@ -504,7 +501,32 @@ export const useGameRoundResults = (gameId: string) => {
       return await response.json()
     },
     enabled: !!gameId,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
+
+  useEffect(() => {
+    if (isSuccess && data?.isWinner) {
+      // Cập nhật cache cho game round
+      queryClient.setQueryData([...gameKeys.detail(gameId)], data.gameRound)
+
+      // Cập nhật cache cho profile (số dư) nếu là winner
+      if (data.isWinner) {
+        const user = queryClient.getQueryData<{ id: string }>(['auth', 'user'])
+        const userId = user?.id
+        if (userId) {
+          queryClient.invalidateQueries({
+            queryKey: ['profiles', 'detail', userId],
+          })
+        }
+      }
+    }
+  }, [isSuccess, data, gameId, queryClient])
+
+  return {
+    data,
+    ...rest,
+  }
 }
 
 /**

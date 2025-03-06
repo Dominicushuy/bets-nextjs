@@ -818,6 +818,54 @@ EXECUTE FUNCTION update_game_stats_on_new_bet();
 -- Phần mới: Thông báo khi game kết thúc và tính lợi nhuận game
 -- ========================================
 
+-- Function để lấy thống kê game
+CREATE OR REPLACE FUNCTION get_game_stats(p_game_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+  v_total_players INTEGER;
+  v_total_winners INTEGER;
+  v_total_bets NUMERIC;
+  v_total_payout NUMERIC;
+  v_game_status TEXT;
+  v_winning_number TEXT;
+BEGIN
+  -- Lấy thông tin game
+  SELECT status, winning_number, COALESCE(total_bets, 0), COALESCE(total_payout, 0)
+  INTO v_game_status, v_winning_number, v_total_bets, v_total_payout
+  FROM game_rounds
+  WHERE id = p_game_id;
+  
+  IF v_game_status IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Game round not found');
+  END IF;
+  
+  -- Đếm số người chơi
+  SELECT COUNT(DISTINCT user_id)
+  INTO v_total_players
+  FROM bets
+  WHERE game_round_id = p_game_id;
+  
+  -- Đếm số người thắng
+  IF v_game_status = 'completed' AND v_winning_number IS NOT NULL THEN
+    SELECT COUNT(DISTINCT user_id)
+    INTO v_total_winners
+    FROM bets
+    WHERE game_round_id = p_game_id AND selected_number = v_winning_number;
+  ELSE
+    v_total_winners := 0;
+  END IF;
+  
+  RETURN jsonb_build_object(
+    'totalPlayers', v_total_players,
+    'totalWinners', v_total_winners,
+    'totalBets', v_total_bets,
+    'totalPayout', v_total_payout,
+    'gameStatus', v_game_status,
+    'winningNumber', v_winning_number
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Function để tạo thông báo khi game kết thúc
 CREATE OR REPLACE FUNCTION notify_users_on_game_completion()
 RETURNS TRIGGER AS $$
@@ -846,13 +894,36 @@ BEGIN
       NOW()
     FROM bets b
     WHERE b.game_round_id = NEW.id;
+    
+    -- Thông báo đặc biệt cho người thắng
+    INSERT INTO notifications (
+      user_id,
+      title,
+      message,
+      type,
+      related_resource_id,
+      related_resource_type,
+      is_read,
+      created_at
+    )
+    SELECT DISTINCT
+      b.user_id,
+      'Chúc mừng! Bạn đã thắng!',
+      'Bạn đã thắng với số ' || NEW.winning_number || '. Vào xem chi tiết ngay!',
+      'reward',
+      NEW.id,
+      'game_round',
+      false,
+      NOW()
+    FROM bets b
+    WHERE b.game_round_id = NEW.id AND b.selected_number = NEW.winning_number;
   END IF;
   
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Tạo trigger cho thông báo khi game kết thúc
+-- Tạo trigger cho thông báo khi game kết thúc nếu chưa có
 DROP TRIGGER IF EXISTS on_game_completion_notify ON game_rounds;
 CREATE TRIGGER on_game_completion_notify
 AFTER UPDATE OF status ON game_rounds
