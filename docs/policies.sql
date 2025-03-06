@@ -756,3 +756,33 @@ USING (
   bucket_id = 'payment_proofs' AND
   (storage.foldername(name))[1] = auth.uid()::text
 );
+
+-- Chỉ admin có thể xem thông tin user auth
+CREATE POLICY "Chỉ admin có thể xem thông tin user" 
+ON auth.users 
+FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 
+    FROM profiles 
+    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  )
+);
+
+-- Người dùng có thể cập nhật email và password của chính mình
+CREATE POLICY "Người dùng cập nhật thông tin auth của mình" 
+ON auth.users 
+FOR UPDATE 
+USING (auth.uid() = id);
+
+-- Chỉ admin mới có thể xóa user
+CREATE POLICY "Chỉ admin có thể xóa user" 
+ON auth.users 
+FOR DELETE 
+USING (
+  EXISTS (
+    SELECT 1 
+    FROM profiles 
+    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
+  )
+);

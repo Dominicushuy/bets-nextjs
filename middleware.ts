@@ -1,82 +1,78 @@
-// src/middleware.ts
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+// middleware.ts
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+// Routes yêu cầu xác thực
+const authRequiredRoutes = [
+  "/dashboard",
+  "/profile",
+  "/games",
+  "/payment-request",
+  "/rewards",
+  "/promotions",
+  "/history",
+];
+
+// Routes chỉ dành cho admin
+const adminOnlyRoutes = ["/admin"];
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  const res = NextResponse.next();
 
-  // Kiểm tra session và chuyển hướng nếu cần
+  // Tạo Supabase client với cookies từ request
+  const supabase = createMiddlewareClient({ req, res });
+
+  // Kiểm tra session hiện tại
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
 
-  // Lấy đường dẫn yêu cầu
-  const path = req.nextUrl.pathname
+  // Lấy pathname từ request URL
+  const { pathname } = req.nextUrl;
 
-  // Danh sách các đường dẫn công khai (không cần đăng nhập)
-  const publicPaths = [
-    '/login',
-    '/register',
-    '/forgot-password',
-    '/reset-password',
-    '/',
-  ]
+  // Kiểm tra xem route hiện tại có yêu cầu xác thực không
+  const isAuthRoute = authRequiredRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+  const isAdminRoute = adminOnlyRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
 
-  // Kiểm tra xem đường dẫn hiện tại có phải là đường dẫn công khai hay không
-  const isPublicPath = publicPaths.some(
-    (publicPath) => path === publicPath || path.startsWith(`${publicPath}/`)
-  )
-
-  // Nếu không có session và đường dẫn không phải là đường dẫn công khai, chuyển hướng đến trang đăng nhập
-  if (!session && !isPublicPath) {
-    const redirectUrl = new URL('/login', req.url)
-    redirectUrl.searchParams.set('redirectedFrom', path)
-    return NextResponse.redirect(redirectUrl)
+  // Nếu không có session và route yêu cầu xác thực, chuyển hướng đến trang đăng nhập
+  if (!session && isAuthRoute) {
+    const redirectUrl = new URL("/login", req.url);
+    redirectUrl.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(redirectUrl);
   }
 
-  // Nếu có session và đang ở đường dẫn công khai (trừ trang chủ), chuyển hướng đến dashboard
-  if (session && isPublicPath && path !== '/') {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+  // Nếu có session mà vào trang đăng nhập hoặc đăng ký, chuyển hướng đến dashboard
+  if (
+    session &&
+    (pathname.startsWith("/login") || pathname.startsWith("/register"))
+  ) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Nếu đường dẫn bắt đầu bằng /admin, kiểm tra quyền admin
-  if (path.startsWith('/admin')) {
-    // Nếu không có session, chuyển hướng đến trang đăng nhập
-    if (!session) {
-      const redirectUrl = new URL('/login', req.url)
-      redirectUrl.searchParams.set('redirectedFrom', path)
-      return NextResponse.redirect(redirectUrl)
-    }
-
-    // Kiểm tra quyền admin
+  // Kiểm tra quyền admin nếu truy cập route admin
+  if (isAdminRoute && session) {
+    // Lấy thông tin role từ user profile
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', session.user.id)
-      .single()
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
 
-    // Nếu không phải admin, chuyển hướng đến dashboard
-    if (!profile || profile.role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+    // Nếu không phải admin, chuyển hướng về dashboard
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }
 
-  return res
+  return res;
 }
 
-// Chỉ áp dụng middleware cho các đường dẫn cần kiểm tra
+// Chỉ định những routes sẽ áp dụng middleware
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public/* (public files)
-     * - api/* (API routes that handle authentication themselves)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
-  ],
-}
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
