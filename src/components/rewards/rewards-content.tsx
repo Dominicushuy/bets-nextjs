@@ -1,14 +1,21 @@
 // src/components/rewards/rewards-content.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useUserRewards, useRewardStats } from '@/hooks/reward-hooks'
+import {
+  useUserRewards,
+  useRewardStats,
+  useRedeemReward,
+} from '@/hooks/reward-hooks'
 import { formatCurrency } from '@/lib/utils'
 import { Loading } from '@/components/ui/loading'
 import GameRewardCard from '@/components/game/game-reward-card'
+import RewardDetailDialog from '@/components/rewards/reward-detail-dialog'
+import { toast } from 'react-hot-toast'
+import { RewardCode } from '@/types/database'
 import {
   Gift,
   Zap,
@@ -19,6 +26,10 @@ import {
   Filter,
   ArrowUpDown,
   Search,
+  RefreshCw,
+  SlidersHorizontal,
+  AlertTriangle,
+  X,
 } from 'lucide-react'
 
 interface RewardsContentProps {
@@ -36,57 +47,140 @@ export default function RewardsContent({
   const [sortOrder, setSortOrder] = useState<
     'newest' | 'oldest' | 'valueDesc' | 'valueAsc'
   >('newest')
-
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedReward, setSelectedReward] = useState<RewardCode | null>(null)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [showExpiredWarning, setShowExpiredWarning] = useState(true)
 
-  const { data: rewards, isLoading } = useUserRewards(userId)
+  const { data: rewards, isLoading, refetch } = useUserRewards(userId)
   const { data: stats, isLoading: statsLoading } = useRewardStats(userId)
+  const { mutate: redeemReward } = useRedeemReward()
 
   const allRewards = rewards || initialRewards
 
+  // Kiểm tra xem có rewards nào sắp hết hạn không (trong vòng 24h)
+  const expiringRewards = useMemo(() => {
+    if (!allRewards) return []
+
+    const now = new Date()
+    const tomorrow = new Date(now)
+    tomorrow.setHours(now.getHours() + 24)
+
+    return allRewards.filter(
+      (reward) =>
+        !reward.is_used &&
+        new Date(reward.expiry_date) > now &&
+        new Date(reward.expiry_date) < tomorrow
+    )
+  }, [allRewards])
+
   // Filter rewards
-  const filteredRewards = allRewards
-    .filter((reward) => {
-      // Apply status filter
-      if (statusFilter !== 'all') {
-        const isExpired = new Date(reward.expiry_date) < new Date()
+  const filteredRewards = useMemo(() => {
+    if (!allRewards) return []
 
-        if (statusFilter === 'available' && (reward.is_used || isExpired))
+    return allRewards
+      .filter((reward) => {
+        // Apply status filter
+        if (statusFilter !== 'all') {
+          const isExpired = new Date(reward.expiry_date) < new Date()
+
+          if (statusFilter === 'available' && (reward.is_used || isExpired))
+            return false
+          if (statusFilter === 'used' && !reward.is_used) return false
+          if (statusFilter === 'expired' && (reward.is_used || !isExpired))
+            return false
+        }
+
+        // Apply search filter
+        if (
+          searchTerm &&
+          !reward.code.toLowerCase().includes(searchTerm.toLowerCase())
+        ) {
           return false
-        if (statusFilter === 'used' && !reward.is_used) return false
-        if (statusFilter === 'expired' && (reward.is_used || !isExpired))
-          return false
+        }
+
+        return true
+      })
+      .sort((a, b) => {
+        // Apply sorting
+        switch (sortOrder) {
+          case 'newest':
+            return (
+              new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime()
+            )
+          case 'oldest':
+            return (
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime()
+            )
+          case 'valueDesc':
+            return b.amount - a.amount
+          case 'valueAsc':
+            return a.amount - b.amount
+          default:
+            return 0
+        }
+      })
+  }, [allRewards, statusFilter, sortOrder, searchTerm])
+
+  // Xử lý đổi nhanh tất cả phần thưởng khả dụng
+  const handleRedeemAll = () => {
+    const availableRewards = allRewards.filter((reward) => {
+      const isExpired = new Date(reward.expiry_date) < new Date()
+      return !reward.is_used && !isExpired
+    })
+
+    if (availableRewards.length === 0) {
+      toast.error('Không có phần thưởng nào khả dụng để đổi')
+      return
+    }
+
+    // Hiển thị xác nhận
+    if (
+      confirm(
+        `Bạn chắc chắn muốn đổi tất cả ${availableRewards.length} phần thưởng khả dụng?`
+      )
+    ) {
+      // Đổi từng phần thưởng một
+      let successCount = 0
+
+      const redeemNext = (index = 0) => {
+        if (index >= availableRewards.length) {
+          // Hoàn thành tất cả
+          toast.success(
+            `Đã đổi thành công ${successCount}/${availableRewards.length} phần thưởng`
+          )
+          refetch()
+          return
+        }
+
+        const reward = availableRewards[index]
+        redeemReward(reward.code, {
+          onSuccess: () => {
+            successCount++
+            // Đổi phần thưởng tiếp theo
+            redeemNext(index + 1)
+          },
+          onError: (error) => {
+            console.error('Lỗi khi đổi phần thưởng:', error)
+            // Vẫn tiếp tục với phần thưởng tiếp theo
+            redeemNext(index + 1)
+          },
+        })
       }
 
-      // Apply search filter
-      if (
-        searchTerm &&
-        !reward.code.toLowerCase().includes(searchTerm.toLowerCase())
-      ) {
-        return false
-      }
+      // Bắt đầu quá trình đổi thưởng
+      redeemNext()
+    }
+  }
 
-      return true
-    })
-    .sort((a, b) => {
-      // Apply sorting
-      switch (sortOrder) {
-        case 'newest':
-          return (
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          )
-        case 'oldest':
-          return (
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          )
-        case 'valueDesc':
-          return b.amount - a.amount
-        case 'valueAsc':
-          return a.amount - b.amount
-        default:
-          return 0
-      }
-    })
+  // Xử lý khi đổi thưởng thành công
+  const handleRewardRedeemed = () => {
+    setShowDetailDialog(false)
+    refetch()
+    toast.success('Đổi thưởng thành công! Số dư đã được cập nhật.')
+  }
 
   if (isLoading) {
     return <Loading />
@@ -94,6 +188,38 @@ export default function RewardsContent({
 
   return (
     <div className='space-y-6'>
+      {/* Expiring rewards warning */}
+      {showExpiredWarning && expiringRewards.length > 0 && (
+        <div className='bg-warning-50 border border-warning-200 rounded-lg p-4 flex items-start'>
+          <AlertTriangle className='text-warning-500 h-5 w-5 mt-0.5 flex-shrink-0 mr-3' />
+          <div className='flex-1'>
+            <h3 className='font-medium text-warning-800'>
+              Phần thưởng sắp hết hạn!
+            </h3>
+            <p className='text-sm text-warning-700 mt-1'>
+              Bạn có {expiringRewards.length} phần thưởng sẽ hết hạn trong vòng
+              24 giờ tới.
+              <Button
+                variant='link'
+                className='text-warning-700 font-medium px-0 py-0 h-auto'
+                onClick={() => {
+                  setStatusFilter('available')
+                  setSearchTerm('')
+                }}>
+                Xem ngay
+              </Button>
+            </p>
+          </div>
+          <Button
+            variant='ghost'
+            size='sm'
+            className='flex-shrink-0 text-warning-700 hover:text-warning-800 hover:bg-warning-100 -mr-2'
+            onClick={() => setShowExpiredWarning(false)}>
+            <X className='h-4 w-4' />
+          </Button>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
         <Card className='bg-gradient-to-br from-primary-500 to-primary-600 text-white'>
@@ -163,9 +289,22 @@ export default function RewardsContent({
               <Info className='h-5 w-5 mr-2 text-primary-500' />
               <h3 className='font-medium'>Tổng giá trị phần thưởng</h3>
             </div>
-            <p className='text-xl font-bold text-success-600'>
-              {formatCurrency(stats?.totalAmount || 0)}
-            </p>
+            <div className='flex items-center'>
+              <p className='text-xl font-bold text-success-600 mr-4'>
+                {formatCurrency(stats?.totalAmount || 0)}
+              </p>
+
+              {(stats?.pendingCount ?? 0) > 0 && (
+                <Button
+                  variant='primary'
+                  size='sm'
+                  onClick={handleRedeemAll}
+                  className='flex items-center'>
+                  <RefreshCw className='h-4 w-4 mr-1' />
+                  Đổi tất cả ({stats?.pendingCount})
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -173,7 +312,17 @@ export default function RewardsContent({
       {/* Filters and Rewards List */}
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách phần thưởng</CardTitle>
+          <CardTitle className='flex justify-between items-center'>
+            <span>Danh sách phần thưởng</span>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => refetch()}
+              className='flex items-center gap-1'>
+              <RefreshCw className='h-4 w-4' />
+              <span className='hidden sm:inline'>Làm mới</span>
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className='mb-4 flex flex-col sm:flex-row gap-3'>
@@ -224,25 +373,42 @@ export default function RewardsContent({
                 Không có phần thưởng
               </h3>
               <p className='mt-1 text-gray-500'>
-                Bạn chưa có phần thưởng nào trong trạng thái này
+                {statusFilter === 'all'
+                  ? 'Bạn chưa có phần thưởng nào'
+                  : `Bạn chưa có phần thưởng nào ${
+                      statusFilter === 'available'
+                        ? 'khả dụng'
+                        : statusFilter === 'used'
+                        ? 'đã sử dụng'
+                        : 'đã hết hạn'
+                    }`}
               </p>
-              <Button
-                variant='outline'
-                className='mt-4'
-                onClick={() => setStatusFilter('all')}>
-                Xem tất cả phần thưởng
-              </Button>
+              {statusFilter !== 'all' && (
+                <Button
+                  variant='outline'
+                  className='mt-4'
+                  onClick={() => setStatusFilter('all')}>
+                  Xem tất cả phần thưởng
+                </Button>
+              )}
             </div>
           ) : (
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               {filteredRewards.map((reward) => (
-                <GameRewardCard
+                <div
                   key={reward.id}
-                  rewardCode={reward.code}
-                  amount={reward.amount}
-                  isUsed={reward.is_used}
-                  expiryDate={reward.expiry_date}
-                />
+                  className='cursor-pointer'
+                  onClick={() => {
+                    setSelectedReward(reward)
+                    setShowDetailDialog(true)
+                  }}>
+                  <GameRewardCard
+                    rewardCode={reward.code}
+                    amount={reward.amount}
+                    isUsed={reward.is_used}
+                    expiryDate={reward.expiry_date}
+                  />
+                </div>
               ))}
             </div>
           )}
@@ -279,8 +445,7 @@ export default function RewardsContent({
             <div>
               <h4 className='font-medium'>Đổi phần thưởng</h4>
               <p className='text-gray-600 text-sm mt-1'>
-                {`Nhấn nút "Đổi thưởng" trên mã bạn muốn đổi. Giá trị phần thưởng
-                sẽ được cộng vào tài khoản của bạn.`}
+                {`Nhấn "Đổi thưởng" trên mã bạn muốn đổi hoặc chọn "Đổi tất cả" để đổi nhiều phần thưởng cùng lúc. Giá trị phần thưởng sẽ được cộng vào tài khoản của bạn.`}
               </p>
             </div>
           </div>
@@ -294,8 +459,9 @@ export default function RewardsContent({
             <div>
               <h4 className='font-medium'>Thời hạn sử dụng</h4>
               <p className='text-gray-600 text-sm mt-1'>
-                Mỗi mã thưởng có thời hạn sử dụng riêng. Đảm bảo đổi thưởng
-                trước khi mã hết hạn.
+                Mỗi mã thưởng có thời hạn sử dụng riêng, thường là 7 ngày kể từ
+                khi nhận. Đảm bảo đổi thưởng trước khi mã hết hạn để không bị
+                mất phần thưởng.
               </p>
             </div>
           </div>
@@ -309,13 +475,21 @@ export default function RewardsContent({
             <div>
               <h4 className='font-medium'>Chia sẻ mã QR</h4>
               <p className='text-gray-600 text-sm mt-1'>
-                Bạn có thể chia sẻ mã QR của phần thưởng để người khác quét và
-                xác nhận.
+                Bạn có thể chia sẻ mã QR của phần thưởng để người khác xác nhận.
+                Nhấn vào thẻ phần thưởng để xem chi tiết và tải xuống mã QR.
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Reward Detail Dialog */}
+      <RewardDetailDialog
+        reward={selectedReward}
+        isOpen={showDetailDialog}
+        onClose={() => setShowDetailDialog(false)}
+        onRedeemed={handleRewardRedeemed}
+      />
     </div>
   )
 }
