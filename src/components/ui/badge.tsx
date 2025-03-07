@@ -11,7 +11,8 @@ interface BadgeProps {
     | 'warning'
     | 'info'
     | 'destructive'
-    | 'outline' // Added outline variant
+    | 'outline'
+    | 'custom' // Added custom variant
   size?: 'xs' | 'sm' | 'md'
   rounded?: boolean
   className?: string
@@ -41,7 +42,8 @@ export function Badge({
     warning: 'bg-warning-100 text-warning-800',
     info: 'bg-info-100 text-info-800',
     destructive: 'bg-danger-100 text-danger-800',
-    outline: 'bg-transparent text-gray-700 border border-gray-300', // Added outline styling
+    outline: 'bg-transparent text-gray-700 border border-gray-300',
+    custom: '', // Added custom variant with no default styling
   }
 
   const sizeClasses = {
@@ -61,7 +63,8 @@ export function Badge({
     warning: 'bg-warning-600',
     info: 'bg-info-600',
     destructive: 'bg-danger-600',
-    outline: 'bg-gray-400', // Added dot color for outline variant
+    outline: 'bg-gray-400',
+    custom: 'bg-gray-500', // Added dot color for custom variant
   }
 
   return (

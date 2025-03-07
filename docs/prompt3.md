@@ -1,28 +1,33 @@
-Tôi dự định sẽ xây dựng phần tính năng sau và danh sách tất cả cấu trúc thư mục của dự án, hãy giúp tôi lấy ra những folder liên quan đến phần tính năng cần làm, Luôn luôn giữ lại những Layout, Page , Share components. 
+Tôi dự định sẽ xây dựng phần tính năng sau, dưới đây là danh sách cấu trúc thư mục của dự án, hãy giúp tôi lấy ra những folders, files liên quan đến phần tính năng cần làm, Luôn luôn giữ lại những Layout, Page , Share components. 
 Output tôi cần là 1 String bao gồm tên đường dẫn tất cả các files, folder, được cách nhau bởi dấu “,”. Những đường dẫn nào có chứa “(...)“ thì thay thế thành “*” (ví dụ: src/app/(dashboard)/profile/page.tsx -> src/app/*/profile/page.tsx) 
 
-### 2.3 Hệ thống cấp độ và thống kê người dùng (3 ngày)
+## 3. Phát triển hệ thống Game và Cá cược
+
+### 3.1 Quản lý lượt chơi và danh sách game (5 ngày)
 
 #### Backend
-- [ ] Tạo function tính toán cập nhật user_statistics
-- [ ] Phát triển function cập nhật cấp độ và phúc lợi tương ứng
-- [ ] Thiết lập triggers tự động cập nhật statistics khi có hoạt động mới
+- [ ] Bổ sung functions CRUD cho game_rounds
+- [ ] Tạo function tạo lượt chơi mới tự động theo lịch
+- [ ] Phát triển triggers tự động thông báo khi có lượt chơi mới
+- [ ] Thiết lập realtime subscriptions cho cập nhật trạng thái game
 
 #### Frontend Components
-- [ ] Xây dựng LevelBadge component hiển thị cấp độ và icon
-- [ ] Tạo UserLevelDetails component (hiển thị các phúc lợi theo cấp độ)
-- [ ] Phát triển StatisticsChart component (biểu đồ thắng/thua theo thời gian)
-- [ ] Xây dựng UserStatsCards với các số liệu thống kê quan trọng
+- [ ] Xây dựng GameList component (danh sách lượt chơi với filters)
+- [ ] Tạo GameCard component (hiển thị thông tin tóm tắt lượt chơi)
+- [ ] Phát triển GameFilters component (lọc theo trạng thái, thời gian)
+- [ ] Xây dựng GameListSkeleton cho trạng thái loading
 
 #### API Routes
-- [ ] Tạo API route `/api/statistics/user` (lấy thống kê chi tiết người dùng)
-- [ ] Tạo API route `/api/statistics/level-benefits` (lấy phúc lợi theo cấp độ)
-- [ ] Tạo API route `/api/statistics/activities` (lấy lịch sử hoạt động)
+- [ ] Tạo API route `/api/game-rounds` (lấy danh sách lượt chơi)
+- [ ] Tạo API route `/api/game-rounds/[id]` (chi tiết lượt chơi)
+- [ ] Tạo API route `/api/game-rounds/active` (lấy các lượt chơi đang diễn ra)
+- [ ] Tạo API route `/api/admin/game-rounds` (CRUD lượt chơi - admin)
 
 #### Services & Hooks
-- [ ] Phát triển StatisticsService (getUserStats, getLevelBenefits)
-- [ ] Xây dựng hook useUserStatistics để quản lý thống kê
-- [ ] Tạo hook useLevelProgress theo dõi tiến trình lên cấp
+- [ ] Phát triển GameService (getGames, getGameById)
+- [ ] Xây dựng hook useGames để quản lý danh sách games
+- [ ] Tạo hook useGame để quản lý chi tiết game
+- [ ] Phát triển hook useGameSubscription để nhận cập nhật realtime
 
 Directory structure:
 └── dominicushuy-bets-nextjs/

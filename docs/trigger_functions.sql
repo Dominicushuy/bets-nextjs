@@ -506,7 +506,11 @@ RETURNS TRIGGER AS $$
 DECLARE
   v_lucky_number TEXT;
   v_total_rewards NUMERIC;
+  v_user_id UUID;
 BEGIN
+  -- Xác định user_id từ bets hoặc từ trigger parameter
+  v_user_id := COALESCE(NEW.user_id, TG_ARGV[0]);
+  
   -- Kiểm tra và tạo bản ghi thống kê nếu chưa có
   INSERT INTO user_statistics (
     user_id, 
@@ -519,21 +523,15 @@ BEGIN
     last_updated
   )
   VALUES (
-    NEW.user_id, 
-    1,
-    CASE WHEN NEW.is_winner THEN 1 ELSE 0 END,
-    CASE WHEN NEW.is_winner THEN 100 ELSE 0 END,
-    CASE WHEN NEW.is_winner THEN NEW.amount ELSE 0 END,
-    CASE WHEN NEW.is_winner THEN NEW.selected_number ELSE NULL END,
-    0,
-    NOW()
+    v_user_id, 
+    0, 0, 0, 0, NULL, 0, NOW()
   )
   ON CONFLICT (user_id) DO NOTHING;
 
   -- Tìm số may mắn của người dùng (số đã giúp thắng nhiều nhất)
   SELECT selected_number INTO v_lucky_number
   FROM bets
-  WHERE user_id = NEW.user_id AND is_winner = TRUE
+  WHERE user_id = v_user_id AND is_winner = TRUE
   GROUP BY selected_number
   ORDER BY COUNT(*) DESC, MAX(created_at) DESC
   LIMIT 1;
@@ -541,39 +539,33 @@ BEGIN
   -- Tính tổng tiền thưởng đã nhận
   SELECT COALESCE(SUM(amount), 0) INTO v_total_rewards
   FROM reward_codes
-  WHERE user_id = NEW.user_id AND is_used = TRUE;
+  WHERE user_id = v_user_id AND is_used = TRUE;
   
   -- Cập nhật thống kê với chi tiết hơn
   WITH stats AS (
     SELECT 
-      user_id,
       COUNT(*) AS total_games,
       SUM(CASE WHEN is_winner THEN 1 ELSE 0 END) AS games_won,
       CASE 
         WHEN COUNT(*) > 0 THEN
           ROUND((SUM(CASE WHEN is_winner THEN 1 ELSE 0 END)::NUMERIC / COUNT(*)::NUMERIC) * 100, 2)
         ELSE 0
-      END AS win_rate
+      END AS win_rate,
+      COALESCE(MAX(CASE WHEN is_winner THEN amount ELSE 0 END), 0) AS biggest_win
     FROM bets 
-    WHERE user_id = NEW.user_id
-    GROUP BY user_id
-  ),
-  max_win AS (
-    SELECT COALESCE(MAX(amount), 0) AS biggest_win
-    FROM bets
-    WHERE user_id = NEW.user_id AND is_winner = TRUE
+    WHERE user_id = v_user_id
   )
   UPDATE user_statistics
   SET 
     total_games_played = stats.total_games,
     games_won = stats.games_won,
     win_rate = stats.win_rate,
-    biggest_win = GREATEST(max_win.biggest_win, biggest_win),
+    biggest_win = GREATEST(stats.biggest_win, biggest_win),
     lucky_number = COALESCE(v_lucky_number, lucky_number),
     total_rewards = v_total_rewards,
     last_updated = NOW()
-  FROM stats, max_win
-  WHERE user_statistics.user_id = NEW.user_id;
+  FROM stats
+  WHERE user_statistics.user_id = v_user_id;
   
   RETURN NEW;
 END;
@@ -1352,6 +1344,8 @@ CREATE OR REPLACE FUNCTION update_user_level()
 RETURNS TRIGGER AS $$
 DECLARE
   next_level RECORD;
+  benefits JSONB;
+  bonus_percent INTEGER;
 BEGIN
   -- Chỉ chạy khi experience_points bị thay đổi
   IF NEW.experience_points = OLD.experience_points THEN
@@ -1367,7 +1361,11 @@ BEGIN
 
   -- Nếu tìm thấy cấp độ mới
   IF FOUND AND next_level.level > NEW.level THEN
-    -- Cập nhật level
+    -- Lấy phúc lợi (benefits) của cấp độ mới
+    benefits := next_level.benefits;
+    bonus_percent := (benefits->>'bonus_percent')::INTEGER;
+    
+    -- Cập nhật level và các phúc lợi liên quan
     NEW.level := next_level.level;
     
     -- Tạo thông báo lên cấp
@@ -1376,13 +1374,16 @@ BEGIN
       title,
       message,
       type,
+      related_resource_type,
       is_read,
       created_at
     ) VALUES (
       NEW.id,
       'Chúc mừng! Bạn đã lên cấp',
-      'Bạn đã đạt cấp độ ' || next_level.level || ': ' || next_level.name,
+      'Bạn đã đạt cấp độ ' || next_level.level || ': ' || next_level.name || ' với ' || 
+      bonus_percent || '% thưởng thêm khi thắng!',
       'system',
+      'level_up',
       false,
       NOW()
     );
@@ -1395,7 +1396,8 @@ BEGIN
       timestamp
     ) VALUES (
       'level_up',
-      'User ' || NEW.id || ' leveled up to level ' || next_level.level,
+      'User ' || NEW.id || ' leveled up to level ' || next_level.level || 
+      ' with benefits: ' || benefits::TEXT,
       NEW.id,
       NOW()
     );
@@ -1549,6 +1551,58 @@ BEGIN
   RETURN v_result;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ================================================================
+-- Function tính toán và cập nhật kinh nghiệm khi lượt chơi kết thúc
+CREATE OR REPLACE FUNCTION calculate_xp_on_game_completion()
+RETURNS TRIGGER AS $$
+DECLARE
+  bet_record RECORD;
+  base_xp INTEGER := 5; -- XP cơ bản cho mỗi lượt chơi
+  win_xp INTEGER := 10; -- XP thưởng khi thắng
+  bet_amount_xp INTEGER; -- XP theo số tiền đặt cược
+BEGIN
+  -- Chỉ thực hiện khi game thay đổi từ active sang completed
+  IF OLD.status = 'active' AND NEW.status = 'completed' THEN
+    -- Duyệt qua tất cả cược trong lượt chơi này
+    FOR bet_record IN 
+      SELECT b.user_id, b.amount, b.is_winner
+      FROM bets b
+      WHERE b.game_round_id = NEW.id
+    LOOP
+      -- Tính toán XP được thêm dựa trên kết quả và số tiền đặt cược
+      -- Công thức: base_xp + (win_xp nếu thắng) + 5 XP cho mỗi 10K đặt cược
+      bet_amount_xp := FLOOR(bet_record.amount / 10000) * 5;
+      
+      IF bet_record.is_winner THEN
+        -- Cập nhật điểm kinh nghiệm khi thắng (nhiều XP hơn)
+        UPDATE profiles 
+        SET experience_points = experience_points + base_xp + win_xp + bet_amount_xp,
+            updated_at = NOW()
+        WHERE id = bet_record.user_id;
+      ELSE
+        -- Cập nhật điểm kinh nghiệm khi thua (ít XP hơn)
+        UPDATE profiles 
+        SET experience_points = experience_points + base_xp + bet_amount_xp,
+            updated_at = NOW()
+        WHERE id = bet_record.user_id;
+      END IF;
+      
+      -- Cập nhật thống kê người dùng
+      PERFORM update_user_statistics(bet_record.user_id);
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Đăng ký trigger cho function tính XP
+DROP TRIGGER IF EXISTS on_game_completion_xp ON game_rounds;
+CREATE TRIGGER on_game_completion_xp
+AFTER UPDATE OF status ON game_rounds
+FOR EACH ROW
+EXECUTE FUNCTION calculate_xp_on_game_completion();
 
 -- ================================================================
 -- END OF FILE

@@ -1,11 +1,13 @@
-// src/components/user/UserLevelDetails.tsx
-import React from 'react'
-import { Card } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import LevelBadge from './level-badge'
+// src/components/user/user-level-details.tsx
+'use client'
+
 import { useLevelBenefits } from '@/hooks/statistics-hooks'
-import { Award, TrendingUp, ChevronRight, Gift } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Award, ChevronRight, Gift, Percent, TrendingUp } from 'lucide-react'
+import { Loading } from '@/components/ui/loading'
+import LevelBadge from './level-badge'
+import { Badge } from '@/components/ui/badge'
+import { UserLevel } from '@/types/database'
 
 interface UserLevelDetailsProps {
   userId: string
@@ -14,128 +16,174 @@ interface UserLevelDetailsProps {
 
 export default function UserLevelDetails({
   userId,
-  className,
+  className = '',
 }: UserLevelDetailsProps) {
-  const { data, isLoading, error } = useLevelBenefits(userId)
+  const { data: levelData, isLoading, error } = useLevelBenefits(userId)
 
   if (isLoading) {
+    return <Loading />
+  }
+
+  if (error || !levelData) {
     return (
-      <Card className={`p-6 animate-pulse ${className}`}>
-        <div className='h-4 w-1/3 bg-gray-200 rounded mb-4'></div>
-        <div className='h-3 w-full bg-gray-200 rounded mb-4'></div>
-        <div className='space-y-2'>
-          <div className='h-3 w-full bg-gray-200 rounded'></div>
-          <div className='h-3 w-2/3 bg-gray-200 rounded'></div>
-        </div>
+      <Card className={className}>
+        <CardContent className='p-6'>
+          <p className='text-red-500'>
+            Không thể tải thông tin cấp độ. Vui lòng thử lại sau.
+          </p>
+        </CardContent>
       </Card>
     )
   }
 
-  if (error || !data) {
-    return (
-      <Card className={`p-6 ${className}`}>
-        <div className='text-center text-red-500'>
-          <p>Không thể tải thông tin cấp độ</p>
+  // Render phúc lợi từ dữ liệu JSON
+  const renderBenefits = (benefits: Record<string, any>) => {
+    return Object.entries(benefits).map(([key, value]) => (
+      <div key={key} className='flex items-center justify-between py-2'>
+        <div className='flex items-center text-gray-700'>
+          {key === 'bonus_percent' ? (
+            <Percent className='h-4 w-4 mr-2 text-primary-500' />
+          ) : (
+            <Gift className='h-4 w-4 mr-2 text-primary-500' />
+          )}
+          <span className='capitalize'>
+            {key === 'bonus_percent'
+              ? 'Thưởng thêm khi thắng'
+              : key.replace(/_/g, ' ')}
+          </span>
         </div>
-      </Card>
-    )
-  }
-
-  const { currentLevel, nextLevel, isMaxLevel } = data
-  const currentBenefits = currentLevel.benefits || {}
-  const nextBenefits = nextLevel?.benefits || {}
-
-  // Format benefits for display
-  const formatBenefit = (key: string, value: any) => {
-    switch (key) {
-      case 'bonus_percent':
-        return `Thưởng ${value}% với mỗi lần thắng`
-      case 'daily_bonus':
-        return `Thưởng hàng ngày: ${formatCurrency(value)}`
-      case 'max_withdrawal':
-        return `Rút tối đa: ${formatCurrency(value)}/ngày`
-      case 'vip_support':
-        return value ? 'Hỗ trợ VIP' : 'Hỗ trợ tiêu chuẩn'
-      default:
-        return `${key}: ${value}`
-    }
+        <Badge variant='success'>
+          {key === 'bonus_percent' ? `+${value}%` : value}
+        </Badge>
+      </div>
+    ))
   }
 
   return (
-    <Card className={`p-6 ${className}`}>
-      <div className='flex justify-between items-center mb-4'>
-        <h3 className='text-lg font-semibold flex items-center'>
-          <Award className='mr-2 h-5 w-5 text-primary-500' />
-          Cấp độ tài khoản
-        </h3>
-        <LevelBadge
-          level={currentLevel.level}
-          levelName={currentLevel.name}
-          size='md'
-          showName={true}
-        />
-      </div>
-
-      {!isMaxLevel && nextLevel && (
-        <div className='mb-6'>
-          <div className='flex justify-between mb-1 text-sm'>
-            <span>
-              Cấp {currentLevel.level} - {currentLevel.name}
-            </span>
-            <span>
-              Cấp {nextLevel.level} - {nextLevel.name}
-            </span>
+    <div className={`space-y-6 ${className}`}>
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-lg flex items-center'>
+            <Award className='h-5 w-5 mr-2 text-primary-500' />
+            Cấp độ hiện tại
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='flex flex-col items-center mb-4'>
+            <LevelBadge
+              level={levelData.currentLevel.level}
+              levelName={levelData.currentLevel.name}
+              size='lg'
+              showIcon
+              showName
+            />
+            {levelData.currentLevel.icon && (
+              <img
+                src={levelData.currentLevel.icon}
+                alt={levelData.currentLevel.name}
+                className='w-16 h-16 mt-2'
+              />
+            )}
           </div>
-          <Progress value={data.progress || 0} className='h-2.5' />
-          <p className='text-sm text-gray-500 mt-2'>
-            <TrendingUp className='inline h-4 w-4 mr-1' />
-            {data.remainingXP} XP nữa để lên cấp {nextLevel.level}
-          </p>
-        </div>
-      )}
 
-      <div className='space-y-4'>
-        <div>
-          <h4 className='text-sm font-medium flex items-center mb-2'>
-            <Gift className='h-4 w-4 mr-1 text-primary-500' />
-            Đặc quyền hiện tại
-          </h4>
-          <ul className='space-y-1.5 ml-6 list-disc text-sm text-gray-600'>
-            {Object.entries(currentBenefits).map(([key, value]) => (
-              <li key={key}>{formatBenefit(key, value)}</li>
+          <div className='border-t pt-4 mt-2'>
+            <h3 className='font-medium text-gray-900 mb-2'>
+              Phúc lợi hiện tại
+            </h3>
+            {levelData.currentLevel.benefits ? (
+              renderBenefits(levelData.currentLevel.benefits)
+            ) : (
+              <p className='text-gray-500 text-sm'>
+                Không có phúc lợi ở cấp độ này
+              </p>
+            )}
+          </div>
+
+          {!levelData.isMaxLevel && levelData.nextLevel && (
+            <div className='mt-6 border-t pt-4'>
+              <div className='flex justify-between items-center mb-4'>
+                <h3 className='font-medium text-gray-900'>Cấp độ tiếp theo</h3>
+                <LevelBadge
+                  level={levelData.nextLevel.level}
+                  size='sm'
+                  showIcon
+                />
+              </div>
+
+              <div className='flex items-center space-x-2 mb-2'>
+                <span className='text-gray-600'>
+                  {levelData.nextLevel.name}
+                </span>
+                <ChevronRight className='h-4 w-4 text-gray-400' />
+                <span className='text-primary-600 font-medium'>
+                  {levelData.nextLevel.experienceRequired} XP cần thiết
+                </span>
+              </div>
+
+              <div className='mt-3'>
+                <h4 className='text-sm font-medium text-gray-700 mb-2'>
+                  Phúc lợi mới:
+                </h4>
+                {levelData.nextLevel.benefits ? (
+                  renderBenefits(levelData.nextLevel.benefits)
+                ) : (
+                  <p className='text-gray-500 text-sm'>
+                    Không có phúc lợi mới ở cấp độ tiếp theo
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {levelData.isMaxLevel && (
+            <div className='mt-4 text-center'>
+              <Badge variant='primary' className='w-full py-2'>
+                Cấp độ tối đa
+              </Badge>
+              <p className='mt-2 text-sm text-gray-600'>
+                Bạn đã đạt cấp độ cao nhất!
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className='text-lg flex items-center'>
+            <TrendingUp className='h-5 w-5 mr-2 text-primary-500' />
+            Lộ trình cấp độ
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className='space-y-3'>
+            {levelData.allLevels?.map((level: any) => (
+              <div
+                key={level.level}
+                className={`p-3 border rounded-lg flex items-center justify-between ${
+                  level.level === levelData.currentLevel.level
+                    ? 'border-primary-400 bg-primary-50'
+                    : 'border-gray-200'
+                }`}>
+                <div className='flex items-center'>
+                  <LevelBadge level={level.level} size='sm' />
+                  <span className='ml-2 font-medium'>{level.name}</span>
+                </div>
+                <div className='flex items-center'>
+                  {level.benefits && 'bonus_percent' in level.benefits && (
+                    <Badge variant='outline' className='mr-2'>
+                      +{level.benefits.bonus_percent}%
+                    </Badge>
+                  )}
+                  <span className='text-sm text-gray-500'>
+                    {level.experienceRequired} XP
+                  </span>
+                </div>
+              </div>
             ))}
-          </ul>
-        </div>
-
-        {!isMaxLevel && nextLevel && (
-          <div>
-            <h4 className='text-sm font-medium flex items-center mb-2'>
-              <ChevronRight className='h-4 w-4 mr-1 text-primary-500' />
-              Đặc quyền cấp tiếp theo
-            </h4>
-            <ul className='space-y-1.5 ml-6 list-disc text-sm text-gray-600'>
-              {Object.entries(nextBenefits).map(([key, value]) => {
-                const currentValue = currentBenefits[key]
-                const isImproved = value > currentValue
-                return (
-                  <li
-                    key={key}
-                    className={isImproved ? 'text-green-600 font-medium' : ''}>
-                    {formatBenefit(key, value)}
-                    {isImproved &&
-                      typeof value === 'number' &&
-                      currentValue && (
-                        <span className='text-xs ml-1'>
-                          (+{value - currentValue})
-                        </span>
-                      )}
-                  </li>
-                )
-              })}
-            </ul>
           </div>
-        )}
-      </div>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

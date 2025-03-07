@@ -1,16 +1,23 @@
-// src/components/user/UserStatsCards.tsx
-import React from 'react'
-import { Card } from '@/components/ui/card'
+// src/components/user/user-stats-cards.tsx
+'use client'
+
 import { useUserStatistics } from '@/hooks/statistics-hooks'
+import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import {
-  Trophy,
-  Target,
-  LineChart,
-  Percent,
+  Award,
+  ChevronRight,
   DollarSign,
-  Calendar,
+  Target,
+  Trophy,
+  Percent,
+  BarChart,
 } from 'lucide-react'
+import { Loading } from '@/components/ui/loading'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 interface UserStatsCardsProps {
   userId: string
@@ -19,97 +26,207 @@ interface UserStatsCardsProps {
 
 export default function UserStatsCards({
   userId,
-  className,
+  className = '',
 }: UserStatsCardsProps) {
-  const { data, isLoading, error } = useUserStatistics(userId)
+  const [period, setPeriod] = useState<'week' | 'month' | 'all'>('all')
+  const { data: stats, isLoading } = useUserStatistics(userId, period)
 
   if (isLoading) {
-    return (
-      <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${className}`}>
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className='p-4 animate-pulse'>
-            <div className='h-4 bg-gray-200 rounded w-1/3 mb-2'></div>
-            <div className='h-6 bg-gray-200 rounded w-2/3 mb-1'></div>
-            <div className='h-3 bg-gray-200 rounded w-1/2'></div>
-          </Card>
-        ))}
-      </div>
-    )
+    return <Loading />
   }
 
-  if (error || !data) {
+  if (!stats) {
     return (
-      <Card className={`p-4 ${className}`}>
-        <div className='text-center text-red-500'>
-          <p>Không thể tải thống kê người dùng</p>
-        </div>
+      <Card className={className}>
+        <CardContent className='p-6'>
+          <p className='text-gray-500'>Không có dữ liệu thống kê</p>
+        </CardContent>
       </Card>
     )
   }
 
-  const stats = data.allTime
-
-  const statCards = [
-    {
-      title: 'Tỷ lệ thắng',
-      value: `${stats.winRate.toFixed(1)}%`,
-      icon: <Percent className='h-4 w-4 text-blue-500' />,
-      color: 'bg-blue-50 text-blue-700',
-    },
-    {
-      title: 'Thắng lớn nhất',
-      value: formatCurrency(stats.biggestWin),
-      icon: <Trophy className='h-4 w-4 text-green-500' />,
-      color: 'bg-green-50 text-green-700',
-    },
-    {
-      title: 'Tổng lượt chơi',
-      value: stats.gamesPlayed.toString(),
-      icon: <Calendar className='h-4 w-4 text-purple-500' />,
-      color: 'bg-purple-50 text-purple-700',
-    },
-    {
-      title: 'Lượt thắng',
-      value: stats.gamesWon.toString(),
-      icon: <Target className='h-4 w-4 text-yellow-500' />,
-      color: 'bg-yellow-50 text-yellow-700',
-    },
-    {
-      title: 'Tổng thưởng đã nhận',
-      value: formatCurrency(stats.totalRewards),
-      icon: <DollarSign className='h-4 w-4 text-red-500' />,
-      color: 'bg-red-50 text-red-700',
-    },
-    {
-      title: 'Xu hướng gần đây',
-      value: data.recent.winRate > stats.winRate ? 'Tăng' : 'Giảm',
-      icon: <LineChart className='h-4 w-4 text-indigo-500' />,
-      color: 'bg-indigo-50 text-indigo-700',
-    },
-  ]
+  const { allTime, recent } = stats
 
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${className}`}>
-      {statCards.map((card, index) => (
-        <Card key={index} className={`p-4 ${card.color}`}>
-          <div className='flex items-center mb-1'>
-            {card.icon}
-            <span className='text-sm font-medium ml-1'>{card.title}</span>
-          </div>
-          <div className='text-xl font-bold'>{card.value}</div>
-          {index === 5 && (
-            <div className='text-xs'>
-              {data.recent.winRate > stats.winRate
-                ? `+${(data.recent.winRate - stats.winRate).toFixed(
-                    1
-                  )}% so với TB`
-                : `${(data.recent.winRate - stats.winRate).toFixed(
-                    1
-                  )}% so với TB`}
+    <div className={`space-y-4 ${className}`}>
+      <div className='flex space-x-2 mb-4'>
+        <Badge
+          variant={period === 'week' ? 'primary' : 'outline'}
+          className='cursor-pointer'
+          onClick={() => setPeriod('week')}>
+          Tuần này
+        </Badge>
+        <Badge
+          variant={period === 'month' ? 'primary' : 'outline'}
+          className='cursor-pointer'
+          onClick={() => setPeriod('month')}>
+          Tháng này
+        </Badge>
+        <Badge
+          variant={period === 'all' ? 'primary' : 'outline'}
+          className='cursor-pointer'
+          onClick={() => setPeriod('all')}>
+          Tất cả
+        </Badge>
+      </div>
+
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+        {/* Tổng lượt chơi */}
+        <Card>
+          <CardContent className='p-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center'>
+                <div className='p-2 rounded-full bg-blue-100'>
+                  <Target className='h-5 w-5 text-blue-600' />
+                </div>
+                <div className='ml-3'>
+                  <p className='text-sm text-gray-500'>Tổng lượt chơi</p>
+                  <p className='text-2xl font-bold'>
+                    {period === 'all'
+                      ? allTime.gamesPlayed
+                      : recent.gamesPlayed}
+                  </p>
+                </div>
+              </div>
+              {period !== 'all' && (
+                <Badge variant='outline'>
+                  {period === 'week' ? '7' : '30'} ngày
+                </Badge>
+              )}
             </div>
-          )}
+          </CardContent>
         </Card>
-      ))}
+
+        {/* Lượt thắng */}
+        <Card>
+          <CardContent className='p-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center'>
+                <div className='p-2 rounded-full bg-green-100'>
+                  <Trophy className='h-5 w-5 text-green-600' />
+                </div>
+                <div className='ml-3'>
+                  <p className='text-sm text-gray-500'>Lượt thắng</p>
+                  <p className='text-2xl font-bold'>
+                    {period === 'all' ? allTime.gamesWon : recent.gamesWon}
+                  </p>
+                </div>
+              </div>
+              <Badge variant={period === 'all' ? 'outline' : 'success'}>
+                {period === 'all'
+                  ? allTime.gamesPlayed > 0
+                    ? `${Math.round(
+                        (allTime.gamesWon / allTime.gamesPlayed) * 100
+                      )}%`
+                    : '0%'
+                  : recent.gamesPlayed > 0
+                  ? `${Math.round(
+                      (recent.gamesWon / recent.gamesPlayed) * 100
+                    )}%`
+                  : '0%'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tỷ lệ thắng */}
+        <Card>
+          <CardContent className='p-4'>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center'>
+                <div className='p-2 rounded-full bg-indigo-100'>
+                  <Percent className='h-5 w-5 text-indigo-600' />
+                </div>
+                <div className='ml-3'>
+                  <p className='text-sm text-gray-500'>Tỷ lệ thắng</p>
+                  <p className='text-2xl font-bold'>
+                    {period === 'all'
+                      ? `${allTime.winRate.toFixed(1)}%`
+                      : `${recent.winRate.toFixed(1)}%`}
+                  </p>
+                </div>
+              </div>
+              <Badge
+                variant={
+                  (period === 'all' ? allTime.winRate : recent.winRate) > 50
+                    ? 'success'
+                    : (period === 'all' ? allTime.winRate : recent.winRate) > 30
+                    ? 'warning'
+                    : 'outline'
+                }>
+                {(period === 'all' ? allTime.winRate : recent.winRate) > 50
+                  ? 'Cao'
+                  : (period === 'all' ? allTime.winRate : recent.winRate) > 30
+                  ? 'Trung bình'
+                  : 'Thấp'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Số tiền lớn nhất */}
+        {period === 'all' && (
+          <Card>
+            <CardContent className='p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center'>
+                  <div className='p-2 rounded-full bg-orange-100'>
+                    <BarChart className='h-5 w-5 text-orange-600' />
+                  </div>
+                  <div className='ml-3'>
+                    <p className='text-sm text-gray-500'>Thắng lớn nhất</p>
+                    <p className='text-2xl font-bold text-green-600'>
+                      {formatCurrency(allTime.biggestWin || 0)}
+                    </p>
+                  </div>
+                </div>
+                {allTime.luckyNumber && (
+                  <Badge variant='warning'>Số {allTime.luckyNumber}</Badge>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tổng phần thưởng */}
+        {period === 'all' && allTime.totalRewards > 0 && (
+          <Card>
+            <CardContent className='p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='flex items-center'>
+                  <div className='p-2 rounded-full bg-purple-100'>
+                    <DollarSign className='h-5 w-5 text-purple-600' />
+                  </div>
+                  <div className='ml-3'>
+                    <p className='text-sm text-gray-500'>Tổng phần thưởng</p>
+                    <p className='text-2xl font-bold text-purple-600'>
+                      {formatCurrency(allTime.totalRewards)}
+                    </p>
+                  </div>
+                </div>
+                <Link href='/rewards'>
+                  <Button variant='outline' size='sm'>
+                    <Award className='h-4 w-4 mr-1' /> Xem
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Xem thống kê chi tiết button */}
+        <Card className='md:col-span-2'>
+          <CardContent className='p-4'>
+            <Link href='/statistics'>
+              <Button variant='primary' fullWidth>
+                <BarChart className='h-4 w-4 mr-2' />
+                Xem thống kê chi tiết
+                <ChevronRight className='h-4 w-4 ml-2' />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

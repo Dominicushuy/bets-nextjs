@@ -1,8 +1,9 @@
-// src/components/user/LevelBadge.tsx
-import React from 'react'
+// src/components/user/level-badge.tsx
+'use client'
+
+import { ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Award, Star, Shield, Crown, Zap } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Award } from 'lucide-react'
 
 interface LevelBadgeProps {
   level: number
@@ -19,48 +20,77 @@ export default function LevelBadge({
   size = 'md',
   showIcon = true,
   showName = false,
-  className,
+  className = '',
 }: LevelBadgeProps) {
-  // Size classes for the badge
-  const sizeClasses = {
-    xs: 'text-xs px-1.5 py-0.5',
-    sm: 'text-xs px-2 py-1',
-    md: 'text-sm px-2.5 py-1',
-    lg: 'text-sm px-3 py-1.5',
+  // Xác định màu sắc và icon dựa trên cấp độ
+  const getBadgeColor = (level: number): string => {
+    switch (true) {
+      case level >= 5:
+        return 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-400'
+      case level >= 4:
+        return 'bg-gradient-to-r from-blue-600 to-indigo-600 border-blue-400'
+      case level >= 3:
+        return 'bg-gradient-to-r from-green-600 to-teal-600 border-green-400'
+      case level >= 2:
+        return 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-400'
+      default:
+        return 'bg-gradient-to-r from-gray-500 to-slate-500 border-gray-400'
+    }
   }
 
-  // Icon size based on badge size
-  const iconSizes = {
-    xs: { size: 10 },
-    sm: { size: 12 },
-    md: { size: 14 },
-    lg: { size: 16 },
+  // Xác định kích thước dựa trên prop size
+  const getBadgeSize = (size: string): string => {
+    switch (size) {
+      case 'xs':
+        return 'px-1.5 py-0.5 text-xs'
+      case 'sm':
+        return 'px-2 py-1 text-xs'
+      case 'lg':
+        return 'px-3 py-1.5 text-base'
+      default: // md
+        return 'px-2.5 py-1 text-sm'
+    }
   }
 
-  // Get the appropriate icon based on level
-  const getIcon = () => {
-    if (level >= 5) return <Crown {...iconSizes[size]} />
-    if (level >= 4) return <Shield {...iconSizes[size]} />
-    if (level >= 3) return <Zap {...iconSizes[size]} />
-    if (level >= 2) return <Star {...iconSizes[size]} />
-    return <Award {...iconSizes[size]} />
+  const getIconSize = (size: string): { width: number; height: number } => {
+    switch (size) {
+      case 'xs':
+        return { width: 12, height: 12 }
+      case 'sm':
+        return { width: 14, height: 14 }
+      case 'lg':
+        return { width: 20, height: 20 }
+      default: // md
+        return { width: 16, height: 16 }
+    }
   }
 
-  // Get badge styling based on level
-  const getBadgeVariant = () => {
-    if (level >= 5) return 'warning'
-    if (level >= 4) return 'success'
-    if (level >= 3) return 'info'
-    if (level >= 2) return 'secondary'
-    return 'primary'
-  }
+  const iconSize = getIconSize(size)
+  const badgeColor = getBadgeColor(level)
+  const badgeSize = getBadgeSize(size)
 
   return (
     <Badge
-      variant={getBadgeVariant()}
-      className={cn('flex items-center', sizeClasses[size], className)}>
-      {showIcon && <span className='mr-1'>{getIcon()}</span>}
-      <span>{showName && levelName ? levelName : `Cấp ${level}`}</span>
+      className={`font-medium ${badgeColor} ${badgeSize} ${
+        showName ? 'min-w-20' : ''
+      } ${className}`}
+      variant='custom'>
+      <div className='flex items-center space-x-1'>
+        {showIcon && (
+          <Award
+            width={iconSize.width}
+            height={iconSize.height}
+            className='text-white'
+          />
+        )}
+        <span>
+          {showName && levelName
+            ? levelName
+            : showName
+            ? `Cấp ${level}`
+            : `Cấp ${level}`}
+        </span>
+      </div>
     </Badge>
   )
 }
