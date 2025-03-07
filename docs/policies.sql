@@ -167,6 +167,22 @@ USING (
   )
 );
 
+-- Cập nhật policies cho bets 
+DROP POLICY IF EXISTS bets_insert_policy ON public.bets;
+
+-- Người dùng chỉ có thể đặt cược cho chính mình và khi game round đang active
+CREATE POLICY bets_insert_policy
+ON public.bets
+FOR INSERT
+WITH CHECK (
+  auth.uid() = user_id AND 
+  EXISTS (
+    SELECT 1
+    FROM game_rounds
+    WHERE game_rounds.id = bets.game_round_id AND game_rounds.status = 'active'
+  )
+);
+
 ---------------------------
 -- Policies cho bảng reward_codes
 ---------------------------

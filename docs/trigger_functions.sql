@@ -189,7 +189,18 @@ DECLARE
   v_user_balance NUMERIC;
   v_game_status TEXT;
   v_result JSONB;
+  v_valid_number BOOLEAN;
 BEGIN
+  -- Kiểm tra số được chọn có phải là số hợp lệ
+  IF p_selected_number !~ '^[0-9]+$' THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Selected number must be a positive integer');
+  END IF;
+  
+  -- Kiểm tra số tiền cược tối thiểu
+  IF p_amount < 10000 THEN
+    RETURN jsonb_build_object('success', false, 'message', 'Minimum bet amount is 10,000 VND');
+  END IF;
+
   -- Kiểm tra số dư người dùng
   SELECT balance INTO v_user_balance
   FROM profiles
@@ -270,6 +281,33 @@ BEGIN
   RETURN jsonb_build_object('success', true, 'message', 'Bet placed successfully', 'bet_id', v_result);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function để cập nhật số dư khi đặt cược
+CREATE OR REPLACE FUNCTION update_balance_on_bet()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Cập nhật stats
+  INSERT INTO system_logs (
+    action_type,
+    description,
+    user_id,
+    timestamp
+  ) VALUES (
+    'bet_placed',
+    'User placed a bet of ' || NEW.amount || ' VND on number ' || NEW.selected_number,
+    NEW.user_id,
+    NOW()
+  );
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Tạo trigger để theo dõi thêm bets mới
+CREATE TRIGGER on_bet_placed
+AFTER INSERT ON bets
+FOR EACH ROW
+EXECUTE FUNCTION update_balance_on_bet();
 
 -- Function để hoàn thành một game round và xác định người thắng
 CREATE OR REPLACE FUNCTION complete_game_round(

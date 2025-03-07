@@ -258,3 +258,34 @@ export async function redeemReward(code: string) {
 
   return await response.json()
 }
+
+/**
+ * Lấy cược của user trong một game cụ thể
+ */
+export async function getUserBetsInGame(userId: string, gameId: string) {
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('bets')
+    .select('*')
+    .eq('game_round_id', gameId)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+/**
+ * Lấy thống kê bet của một game
+ */
+export async function getBetStats(gameId: string) {
+  const response = await fetch(`/api/game-rounds/${gameId}/bet-stats`)
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error fetching bet stats')
+  }
+
+  return await response.json()
+}

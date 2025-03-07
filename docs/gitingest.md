@@ -1,4 +1,4 @@
-docs,.gitignore,create-nextjs-structure.sh,pnpm-lock.yaml
+docs,.gitignore,create-nextjs-structure.sh,pnpm-lock.yaml,tsconfig.json
 
 src/components/*
 src/app/*

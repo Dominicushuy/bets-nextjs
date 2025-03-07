@@ -726,3 +726,22 @@ export function useGameNumberDistribution(gameId: string) {
     staleTime: 30 * 1000, // 30 giây
   })
 }
+
+/**
+ * Hook để lấy thống kê cược của một game
+ */
+export function useBetStats(gameId: string) {
+  return useQuery({
+    queryKey: ['games', 'bet-stats', gameId],
+    queryFn: async () => {
+      const response = await fetch(`/api/game-rounds/${gameId}/bet-stats`)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to fetch bet stats')
+      }
+      return await response.json()
+    },
+    enabled: !!gameId,
+    staleTime: 30 * 1000, // 30 giây
+  })
+}

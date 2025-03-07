@@ -115,6 +115,8 @@ Directory structure:
         │       │   │   │   └── route.ts
         │       │   │   └── results/
         │       │   │       └── route.ts
+        │       │   ├── active/
+        │       │   │   └── route.ts
         │       │   └── bets/
         │       │       └── route.ts
         │       ├── history/
@@ -244,9 +246,9 @@ Directory structure:
         │   │   ├── tabs.tsx
         │   │   └── textarea.tsx
         │   └── user/
-        │       ├── LevelBadge.tsx
-        │       ├── UserLevelDetails.tsx
-        │       └── UserStatsCards.tsx
+        │       ├── level-badge.tsx
+        │       ├── user-level-details.tsx
+        │       └── user-stats-cards.tsx
         ├── hooks/
         │   ├── auth-hooks.ts
         │   ├── game-hooks.ts
