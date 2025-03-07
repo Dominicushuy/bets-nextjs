@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loading } from '@/components/ui/loading'
 import { GameRound } from '@/types/database'
-import LevelBadge from '@/components/user/LevelBadge'
+import LevelBadge from '@/components/user/level-badge'
 
 // Các widget mới
 import StatisticsWidget from '@/components/dashboard/statistics-widget'

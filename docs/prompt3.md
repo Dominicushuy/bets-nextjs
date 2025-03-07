@@ -1,3 +1,29 @@
+Tôi dự định sẽ xây dựng phần tính năng sau và danh sách tất cả cấu trúc thư mục của dự án, hãy giúp tôi lấy ra những folder liên quan đến phần tính năng cần làm, Luôn luôn giữ lại những Layout, Page , Share components. 
+Output tôi cần là 1 String bao gồm tên đường dẫn tất cả các files, folder, được cách nhau bởi dấu “,”. Những đường dẫn nào có chứa “(...)“ thì thay thế thành “*” (ví dụ: src/app/(dashboard)/profile/page.tsx -> src/app/*/profile/page.tsx) 
+
+### 2.3 Hệ thống cấp độ và thống kê người dùng (3 ngày)
+
+#### Backend
+- [ ] Tạo function tính toán cập nhật user_statistics
+- [ ] Phát triển function cập nhật cấp độ và phúc lợi tương ứng
+- [ ] Thiết lập triggers tự động cập nhật statistics khi có hoạt động mới
+
+#### Frontend Components
+- [ ] Xây dựng LevelBadge component hiển thị cấp độ và icon
+- [ ] Tạo UserLevelDetails component (hiển thị các phúc lợi theo cấp độ)
+- [ ] Phát triển StatisticsChart component (biểu đồ thắng/thua theo thời gian)
+- [ ] Xây dựng UserStatsCards với các số liệu thống kê quan trọng
+
+#### API Routes
+- [ ] Tạo API route `/api/statistics/user` (lấy thống kê chi tiết người dùng)
+- [ ] Tạo API route `/api/statistics/level-benefits` (lấy phúc lợi theo cấp độ)
+- [ ] Tạo API route `/api/statistics/activities` (lấy lịch sử hoạt động)
+
+#### Services & Hooks
+- [ ] Phát triển StatisticsService (getUserStats, getLevelBenefits)
+- [ ] Xây dựng hook useUserStatistics để quản lý thống kê
+- [ ] Tạo hook useLevelProgress theo dõi tiến trình lên cấp
+
 Directory structure:
 └── dominicushuy-bets-nextjs/
     ├── README.md

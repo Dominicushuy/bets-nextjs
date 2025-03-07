@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast'
 import NotificationDropdown from '@/components/notifications/notification-dropdown'
 import { Wallet, Inbox, LineChart, Award } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import LevelBadge from '@/components/user/LevelBadge'
+import LevelBadge from '@/components/user/level-badge'
 
 interface NavbarProps {
   profile: any

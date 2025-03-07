@@ -2,7 +2,7 @@
 import React from 'react'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import LevelBadge from './LevelBadge'
+import LevelBadge from './level-badge'
 import { useLevelBenefits } from '@/hooks/statistics-hooks'
 import { Award, TrendingUp, ChevronRight, Gift } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'

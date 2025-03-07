@@ -5,16 +5,15 @@ import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Tabs } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { useProfileStats } from '@/hooks/profile-hooks'
 import {
   useLevelBenefits,
   useUserStatistics,
   useUserActivities,
 } from '@/hooks/statistics-hooks'
 import { Loading } from '@/components/ui/loading'
-import LevelBadge from '@/components/user/LevelBadge'
-import UserLevelDetails from '@/components/user/UserLevelDetails'
-import UserStatsCards from '@/components/user/UserStatsCards'
+import LevelBadge from '@/components/user/level-badge'
+import UserLevelDetails from '@/components/user/user-level-details'
+import UserStatsCards from '@/components/user/user-stats-cards'
 import StatisticsChart from '@/components/statistics/statistics-chart'
 import ActivityFeed from '@/components/statistics/activity-feed'
 

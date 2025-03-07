@@ -24,10 +24,8 @@ Theo file `plan.md`, hãy giúp tôi tiếp tục phát triển dự án, hãy b
 - [ ] Tạo hook useLevelProgress theo dõi tiến trình lên cấp
 
 Lưu ý:
-- File `code.txt` bao gồm những phần code có liên quan tôi đang xây dựng từ trước
+- File `code.txt` bao gồm những phần code có liên quan tôi đang xây dựng từ trước. Những phần nào hiện đã phát triển nếu cần thì có thể cập nhật thêm. Nếu đã hoàn thiện thì bỏ qua, nếu thiếu thì tạo thêm và liên kết vào các Page, Layout có sẵn.
 
-- Kết quả trả về chỉ bao gồm những mục tôi liệt kê ở trên,, tôi sẽ hỏi bạn thêm sau đó.
+- Kết quả trả về chỉ bao gồm những mục tôi liệt kê ở trên, tôi sẽ hỏi bạn thêm sau đó.
 
-- Những phần nào hiện đã phát triển (kiểm tra trong Github files) nếu cần thì có thể cập nhật thêm, còn không thì bỏ qua.
-
-- Đặc biệt hãy kiểm tra file `trigger_functions.sql`, `policies.sql`​ trước xem đã tồn tại function hoặc triggers chưa trước khi tạo thêm functions hay trigger mới.
+- Đặc biệt hãy kiểm tra tất cả các functions, triggers đã tồn tại trong files file `trigger_functions.sql`​ trước xem đã tồn tại chưa, nếu chưa thì hãy tạo mới, nếu có rồi thì giữ nguyên tên và cập nhật logic (nếu cần)
