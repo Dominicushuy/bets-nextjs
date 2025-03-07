@@ -1,4 +1,3 @@
-// src/components/dashboard/dashboard-content.tsx
 'use client'
 
 import { useState } from 'react'
@@ -15,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loading } from '@/components/ui/loading'
 import { GameRound } from '@/types/database'
+import LevelBadge from '@/components/user/LevelBadge'
 
 // Các widget mới
 import StatisticsWidget from '@/components/dashboard/statistics-widget'
@@ -61,9 +61,14 @@ export default function DashboardContent({ userId }: DashboardContentProps) {
                 <h2 className='text-xl md:text-2xl font-bold text-white'>
                   Xin chào, {profile?.display_name || 'Người chơi'}!
                 </h2>
-                <p className='mt-1 text-primary-100 text-white'>
-                  Chúc bạn chơi game vui vẻ và may mắn.
-                </p>
+                <div className='mt-1 text-primary-100 flex items-center space-x-2'>
+                  <p>Chúc bạn chơi game vui vẻ và may mắn.</p>
+                  <LevelBadge
+                    level={profile?.level || 1}
+                    size='sm'
+                    className='bg-white/20'
+                  />
+                </div>
               </div>
               <div className='flex space-x-3'>
                 <Button

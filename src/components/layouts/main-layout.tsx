@@ -8,8 +8,9 @@ import { supabase } from '@/lib/supabase/client'
 import { Avatar } from '@/components/ui/avatar'
 import { toast } from 'react-hot-toast'
 import NotificationDropdown from '@/components/notifications/notification-dropdown'
-import { Wallet, Inbox } from 'lucide-react'
+import { Wallet, Inbox, LineChart, Award } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import LevelBadge from '@/components/user/LevelBadge'
 
 interface NavbarProps {
   profile: any
@@ -73,6 +74,18 @@ export default function Navbar({ profile }: NavbarProps) {
                 Lượt chơi
               </Link>
 
+              {/* Thêm mục Thống kê & Cấp độ */}
+              <Link
+                href='/statistics'
+                className={`${
+                  isActive('/statistics')
+                    ? 'border-primary-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}>
+                <LineChart className='h-4 w-4 mr-1' />
+                Thống kê & Cấp độ
+              </Link>
+
               <Link
                 href='/history'
                 className={`${
@@ -102,6 +115,16 @@ export default function Navbar({ profile }: NavbarProps) {
               <span className='font-medium'>
                 {profile?.balance?.toLocaleString()} VND
               </span>
+            </div>
+
+            {/* Level Badge */}
+            <div className='flex items-center pr-4 border-r border-gray-200'>
+              <Award className='h-5 w-5 text-primary-500 mr-2' />
+              <LevelBadge
+                level={profile?.level || 1}
+                size='sm'
+                showIcon={true}
+              />
             </div>
 
             {/* Notifications */}
@@ -141,7 +164,10 @@ export default function Navbar({ profile }: NavbarProps) {
                   aria-labelledby='user-menu-button'
                   tabIndex={-1}>
                   <div className='px-4 py-2 border-b border-gray-200'>
-                    <p className='text-sm text-gray-700'>Đăng nhập với</p>
+                    <div className='flex justify-between items-center'>
+                      <p className='text-sm text-gray-700'>Đăng nhập với</p>
+                      <LevelBadge level={profile?.level || 1} size='xs' />
+                    </div>
                     <p className='text-sm font-medium text-gray-900 truncate'>
                       {profile?.phone}
                     </p>
@@ -153,6 +179,17 @@ export default function Navbar({ profile }: NavbarProps) {
                     role='menuitem'
                     onClick={() => setUserMenuOpen(false)}>
                     Hồ sơ cá nhân
+                  </Link>
+
+                  <Link
+                    href='/statistics'
+                    className='block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100'
+                    role='menuitem'
+                    onClick={() => setUserMenuOpen(false)}>
+                    <div className='flex items-center'>
+                      <LineChart className='h-4 w-4 mr-1' />
+                      Thống kê & Cấp độ
+                    </div>
                   </Link>
 
                   <Link
@@ -260,6 +297,18 @@ export default function Navbar({ profile }: NavbarProps) {
               Lượt chơi
             </Link>
 
+            {/* Thêm mục Thống kê & Cấp độ cho mobile */}
+            <Link
+              href='/statistics'
+              className={`${
+                isActive('/statistics')
+                  ? 'bg-primary-50 border-primary-500 text-primary-700'
+                  : 'border-transparent text-gray-600 hover:bg-gray-50'
+              } block pl-3 pr-4 py-2 border-l-4 text-base font-medium flex items-center`}>
+              <LineChart className='h-4 w-4 mr-2' />
+              Thống kê & Cấp độ
+            </Link>
+
             <Link
               href='/history'
               className={`${
@@ -301,8 +350,9 @@ export default function Navbar({ profile }: NavbarProps) {
                 />
               </div>
               <div className='ml-3'>
-                <div className='text-base font-medium text-gray-800'>
-                  {profile?.phone}
+                <div className='text-base font-medium text-gray-800 flex items-center space-x-2'>
+                  <span>{profile?.phone}</span>
+                  <LevelBadge level={profile?.level || 1} size='xs' />
                 </div>
                 <div className='text-sm font-medium text-gray-500'>
                   Số dư: {profile?.balance?.toLocaleString()} VND
@@ -314,6 +364,13 @@ export default function Navbar({ profile }: NavbarProps) {
                 href='/profile'
                 className='block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100'>
                 Hồ sơ cá nhân
+              </Link>
+
+              <Link
+                href='/statistics'
+                className='block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 flex items-center'>
+                <LineChart className='h-4 w-4 mr-2' />
+                Thống kê & Cấp độ
               </Link>
 
               <Link

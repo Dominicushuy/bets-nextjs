@@ -20,17 +20,39 @@ export function formatCurrency(amount: number | null | undefined): string {
 /**
  * Format ngày giờ sang định dạng Việt Nam
  */
-export function formatDateTime(dateString: string | null | undefined): string {
+export function formatDateTime(dateString: string): string {
   if (!dateString) return ''
-  return new Date(dateString).toLocaleString('vi-VN')
+
+  const date = new Date(dateString)
+
+  // Kiểm tra xem date có hợp lệ không
+  if (isNaN(date.getTime())) return ''
+
+  return date.toLocaleString('vi-VN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 /**
  * Format ngày sang định dạng Việt Nam
  */
-export function formatDate(dateString: string | null | undefined): string {
+export function formatDate(dateString: string): string {
   if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('vi-VN')
+
+  const date = new Date(dateString)
+
+  // Kiểm tra xem date có hợp lệ không
+  if (isNaN(date.getTime())) return ''
+
+  return date.toLocaleDateString('vi-VN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
 }
 
 /**

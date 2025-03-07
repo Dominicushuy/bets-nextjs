@@ -503,6 +503,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Function để tổng hợp thống kê người dùng
 CREATE OR REPLACE FUNCTION update_user_statistics()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_lucky_number TEXT;
+  v_total_rewards NUMERIC;
 BEGIN
   -- Kiểm tra và tạo bản ghi thống kê nếu chưa có
   INSERT INTO user_statistics (
@@ -526,8 +529,21 @@ BEGIN
     NOW()
   )
   ON CONFLICT (user_id) DO NOTHING;
+
+  -- Tìm số may mắn của người dùng (số đã giúp thắng nhiều nhất)
+  SELECT selected_number INTO v_lucky_number
+  FROM bets
+  WHERE user_id = NEW.user_id AND is_winner = TRUE
+  GROUP BY selected_number
+  ORDER BY COUNT(*) DESC, MAX(created_at) DESC
+  LIMIT 1;
+
+  -- Tính tổng tiền thưởng đã nhận
+  SELECT COALESCE(SUM(amount), 0) INTO v_total_rewards
+  FROM reward_codes
+  WHERE user_id = NEW.user_id AND is_used = TRUE;
   
-  -- Cập nhật thống kê nếu đã có
+  -- Cập nhật thống kê với chi tiết hơn
   WITH stats AS (
     SELECT 
       user_id,
@@ -543,27 +559,18 @@ BEGIN
     GROUP BY user_id
   ),
   max_win AS (
-    SELECT MAX(amount) AS biggest_win
+    SELECT COALESCE(MAX(amount), 0) AS biggest_win
     FROM bets
     WHERE user_id = NEW.user_id AND is_winner = TRUE
-  ),
-  lucky_numbers AS (
-    SELECT
-      selected_number,
-      COUNT(*) AS wins
-    FROM bets
-    WHERE user_id = NEW.user_id AND is_winner = TRUE
-    GROUP BY selected_number
-    ORDER BY wins DESC
-    LIMIT 1
   )
   UPDATE user_statistics
   SET 
     total_games_played = stats.total_games,
     games_won = stats.games_won,
     win_rate = stats.win_rate,
-    biggest_win = COALESCE(max_win.biggest_win, biggest_win),
-    lucky_number = COALESCE((SELECT selected_number FROM lucky_numbers), lucky_number),
+    biggest_win = GREATEST(max_win.biggest_win, biggest_win),
+    lucky_number = COALESCE(v_lucky_number, lucky_number),
+    total_rewards = v_total_rewards,
     last_updated = NOW()
   FROM stats, max_win
   WHERE user_statistics.user_id = NEW.user_id;
@@ -721,32 +728,68 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Trigger để tự động cập nhật số điểm kinh nghiệm khi user thắng
 CREATE OR REPLACE FUNCTION update_experience_on_win()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_current_level INTEGER;
+  v_next_level INTEGER;
+  v_next_level_exp INTEGER;
+  v_current_xp INTEGER;
+  v_added_xp INTEGER;
+  v_profile RECORD;
+  v_benefits JSONB;
 BEGIN
   -- Chỉ áp dụng cho bets mới được đánh dấu là thắng
   IF NEW.is_winner = TRUE AND (OLD.is_winner IS NULL OR OLD.is_winner = FALSE) THEN
-    -- Cập nhật điểm kinh nghiệm và level nếu đủ điều kiện
-    UPDATE profiles SET
-      experience_points = experience_points + FLOOR(NEW.amount / 10000) * 5, -- 5 XP cho mỗi 10K đặt cược
-      updated_at = NOW()
+    -- Lấy thông tin profile hiện tại
+    SELECT * INTO v_profile
+    FROM profiles
     WHERE id = NEW.user_id;
     
-    -- Kiểm tra nâng cấp level
-    WITH user_exp AS (
-      SELECT p.id, p.experience_points, p.level
-      FROM profiles p
-      WHERE p.id = NEW.user_id
-    ),
-    next_level AS (
-      SELECT ul.level, ul.experience_required
-      FROM user_levels ul
-      JOIN user_exp ue ON ul.level = ue.level + 1
-    )
-    UPDATE profiles p
-    SET level = nl.level,
+    -- Tính toán XP được thêm dựa trên số tiền đặt cược
+    -- Công thức: 5 XP cho mỗi 10K đặt cược + 10 XP cho mỗi lần thắng
+    v_added_xp := 10 + FLOOR(NEW.amount / 10000) * 5;
+    
+    -- Cập nhật điểm kinh nghiệm
+    UPDATE profiles 
+    SET experience_points = experience_points + v_added_xp,
         updated_at = NOW()
-    FROM user_exp ue, next_level nl
-    WHERE p.id = ue.id 
-      AND ue.experience_points >= nl.experience_required;
+    WHERE id = NEW.user_id
+    RETURNING level, experience_points INTO v_current_level, v_current_xp;
+    
+    -- Kiểm tra level tiếp theo
+    SELECT level, experience_required INTO v_next_level, v_next_level_exp
+    FROM user_levels
+    WHERE level = v_current_level + 1;
+    
+    -- Nếu có level tiếp theo và đã đạt đủ XP
+    IF v_next_level IS NOT NULL AND v_current_xp >= v_next_level_exp THEN
+      -- Lấy benefits của level mới
+      SELECT benefits INTO v_benefits
+      FROM user_levels
+      WHERE level = v_next_level;
+      
+      -- Cập nhật level
+      UPDATE profiles
+      SET level = v_next_level,
+          updated_at = NOW()
+      WHERE id = NEW.user_id;
+      
+      -- Thêm thông báo lên cấp
+      INSERT INTO notifications (
+        user_id,
+        title,
+        message,
+        type,
+        is_read,
+        created_at
+      ) VALUES (
+        NEW.user_id,
+        'Chúc mừng! Bạn đã lên cấp',
+        'Bạn đã đạt cấp độ ' || v_next_level || ' và nhận được những đặc quyền mới!',
+        'system',
+        false,
+        NOW()
+      );
+    END IF;
   END IF;
   
   RETURN NEW;
@@ -1414,6 +1457,98 @@ CREATE TRIGGER on_bet_update_lucky_number
 AFTER INSERT OR UPDATE OF is_winner ON bets
 FOR EACH ROW
 EXECUTE FUNCTION update_lucky_number();
+
+-- ================================================================
+-- Function tính toán và áp dụng phúc lợi dựa trên cấp độ
+CREATE OR REPLACE FUNCTION calculate_level_benefits(p_user_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+  v_user_level INTEGER;
+  v_benefits JSONB;
+BEGIN
+  -- Lấy cấp độ hiện tại của người dùng
+  SELECT level INTO v_user_level
+  FROM profiles
+  WHERE id = p_user_id;
+  
+  -- Lấy phúc lợi dựa trên cấp độ
+  SELECT benefits INTO v_benefits
+  FROM user_levels
+  WHERE level = v_user_level;
+  
+  RETURN v_benefits;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function lấy thống kê hoạt động của người dùng
+CREATE OR REPLACE FUNCTION get_user_activity_stats(p_user_id UUID, p_days INTEGER DEFAULT 30)
+RETURNS JSONB AS $$
+DECLARE
+  v_result JSONB;
+BEGIN
+  WITH recent_bets AS (
+    SELECT 
+      DATE_TRUNC('day', created_at) AS bet_date,
+      COUNT(*) AS bet_count,
+      SUM(CASE WHEN is_winner THEN 1 ELSE 0 END) AS wins,
+      SUM(amount) AS total_amount
+    FROM bets
+    WHERE user_id = p_user_id
+    AND created_at >= NOW() - (p_days || ' days')::INTERVAL
+    GROUP BY DATE_TRUNC('day', created_at)
+    ORDER BY bet_date
+  ),
+  daily_stats AS (
+    SELECT 
+      bet_date,
+      bet_count,
+      wins,
+      total_amount,
+      CASE WHEN bet_count > 0 THEN 
+        ROUND((wins::NUMERIC / bet_count::NUMERIC) * 100, 2)
+      ELSE 0 END AS win_rate
+    FROM recent_bets
+  )
+  SELECT 
+    jsonb_build_object(
+      'dailyActivity', jsonb_agg(
+        jsonb_build_object(
+          'date', bet_date,
+          'bets', bet_count,
+          'wins', wins,
+          'amount', total_amount,
+          'winRate', win_rate
+        )
+      ),
+      'summary', jsonb_build_object(
+        'totalBets', COALESCE(SUM(bet_count), 0),
+        'totalWins', COALESCE(SUM(wins), 0),
+        'totalAmount', COALESCE(SUM(total_amount), 0),
+        'averageWinRate', CASE 
+          WHEN SUM(bet_count) > 0 THEN 
+            ROUND((SUM(wins)::NUMERIC / SUM(bet_count)::NUMERIC) * 100, 2)
+          ELSE 0 
+        END
+      )
+    ) INTO v_result
+  FROM daily_stats;
+  
+  -- Xử lý trường hợp không có dữ liệu
+  IF v_result IS NULL THEN
+    v_result := jsonb_build_object(
+      'dailyActivity', '[]'::JSONB,
+      'summary', jsonb_build_object(
+        'totalBets', 0,
+        'totalWins', 0,
+        'totalAmount', 0,
+        'averageWinRate', 0
+      )
+    );
+  END IF;
+  
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ================================================================
 -- END OF FILE

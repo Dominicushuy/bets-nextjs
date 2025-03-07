@@ -24,6 +24,7 @@ Theo file `plan.md`, hãy giúp tôi tiếp tục phát triển dự án, hãy b
 - [ ] Tạo hook useLevelProgress theo dõi tiến trình lên cấp
 
 Lưu ý:
+- File `code.txt` bao gồm những phần code có liên quan tôi đang xây dựng từ trước
 
 - Kết quả trả về chỉ bao gồm những mục tôi liệt kê ở trên,, tôi sẽ hỏi bạn thêm sau đó.
 
