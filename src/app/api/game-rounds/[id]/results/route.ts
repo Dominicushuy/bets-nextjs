@@ -1,4 +1,4 @@
-// src/app/api/game-rounds/[id]/results/route.ts - cập nhật
+// src/app/api/game-rounds/[id]/results/route.ts
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -6,8 +6,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const gameId = params.id
+
   try {
-    const gameId = params.id
     const supabase = createClient()
 
     // Lấy thông tin người dùng hiện tại
@@ -20,21 +21,20 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Lấy thông tin lượt chơi
+    // Lấy thông tin game round và kiểm tra xem nó đã hoàn thành chưa
     const { data: gameRound, error: gameError } = await supabase
       .from('game_rounds')
-      .select('*, creator:created_by (phone)')
+      .select('*')
       .eq('id', gameId)
       .single()
 
     if (gameError) {
       return NextResponse.json(
-        { error: 'Game round not found' },
+        { error: gameError.message || 'Game round not found' },
         { status: 404 }
       )
     }
 
-    // Nếu lượt chơi chưa hoàn thành, trả về lỗi
     if (gameRound.status !== 'completed') {
       return NextResponse.json(
         { error: 'Game round is not completed yet' },
@@ -42,31 +42,46 @@ export async function GET(
       )
     }
 
-    // Lấy tất cả lượt đặt cược trong game này
-    const { data: allBets, error: allBetsError } = await supabase
-      .from('bets')
-      .select('*')
-      .eq('game_round_id', gameId)
+    // Lấy thông số thống kê trò chơi
+    const { data: gameStats, error: statsError } = await supabase.rpc(
+      'get_game_stats',
+      { p_game_id: gameId }
+    )
 
-    if (allBetsError) {
-      console.error('Error fetching all bets:', allBetsError)
-    }
-
-    // Lấy thông tin thắng thua của người dùng hiện tại
-    const { data: userBets, error: userBetsError } = await supabase
-      .from('bets')
-      .select('*')
-      .eq('game_round_id', gameId)
-      .eq('user_id', user.id)
-
-    if (userBetsError) {
+    if (statsError) {
       return NextResponse.json(
-        { error: 'Error fetching user bets' },
+        { error: statsError.message || 'Error fetching game statistics' },
         { status: 500 }
       )
     }
 
-    // Lấy thông tin phần thưởng (nếu có)
+    // Kiểm tra xem người dùng hiện tại có thắng hay không
+    const { data: winningBets, error: winningBetsError } = await supabase
+      .from('bets')
+      .select('*')
+      .eq('game_round_id', gameId)
+      .eq('user_id', user.id)
+      .eq('is_winner', true)
+
+    if (winningBetsError) {
+      return NextResponse.json(
+        { error: winningBetsError.message || 'Error checking winner status' },
+        { status: 500 }
+      )
+    }
+
+    const isWinner = winningBets && winningBets.length > 0
+
+    // Tính tổng tiền thắng
+    let totalWinAmount = 0
+    if (isWinner) {
+      totalWinAmount = winningBets.reduce(
+        (sum, bet) => sum + bet.amount * 80, // Hệ số trả thưởng 80
+        0
+      )
+    }
+
+    // Lấy danh sách phần thưởng của người dùng (nếu có)
     const { data: rewards, error: rewardsError } = await supabase
       .from('reward_codes')
       .select('*')
@@ -74,97 +89,32 @@ export async function GET(
       .eq('user_id', user.id)
 
     if (rewardsError) {
-      console.error('Error fetching rewards:', rewardsError)
-    }
-
-    // Tính tổng tiền thắng
-    const totalWinAmount =
-      rewards?.reduce((sum, reward) => sum + reward.amount, 0) || 0
-
-    // Kiểm tra người dùng có thắng không
-    const hasWinningBets =
-      userBets?.some((bet) => bet.is_winner === true) || false
-
-    // Tổng số người chơi và người thắng
-    const totalPlayers = [...new Set(allBets?.map((bet) => bet.user_id) || [])]
-      .length
-    const totalWinners = [
-      ...new Set(
-        allBets?.filter((bet) => bet.is_winner)?.map((bet) => bet.user_id) || []
-      ),
-    ].length
-
-    // Lấy số liệu tổng hợp từ function SQL hoặc tính toán thủ công nếu function chưa có
-    let stats
-    try {
-      const { data: statsData, error: statsError } = await supabase.rpc(
-        'get_game_stats',
-        { p_game_id: gameId }
+      return NextResponse.json(
+        { error: rewardsError.message || 'Error fetching rewards' },
+        { status: 500 }
       )
-
-      if (statsError) {
-        throw statsError
-      }
-
-      stats = statsData
-    } catch (error) {
-      console.error(
-        'Error calling get_game_stats, using manual calculation:',
-        error
-      )
-      // Tính toán thủ công
-      stats = {
-        totalPlayers,
-        totalWinners,
-        totalBets: gameRound.total_bets || 0,
-        totalPayout: gameRound.total_payout || 0,
-      }
     }
 
-    // Lấy 3 lượt chơi gần nhất đang diễn ra (cho "Lượt chơi khác" section)
-    const { data: activeGames, error: activeGamesError } = await supabase
-      .from('game_rounds')
-      .select('id, start_time, total_bets, status')
-      .eq('status', 'active')
-      .order('start_time', { ascending: false })
-      .limit(3)
+    // Đánh dấu thông báo liên quan đến game này là đã đọc
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('related_resource_id', gameId)
+      .eq('related_resource_type', 'game_round')
+      .eq('user_id', user.id)
 
-    if (activeGamesError) {
-      console.error('Error fetching active games:', activeGamesError)
-    }
-
-    // Thêm logic để kiểm tra và đánh dấu thông báo đã đọc
-    const markNotificationsAsRead = async (
-      supabase: any,
-      userId: string,
-      gameId: string
-    ) => {
-      try {
-        await supabase
-          .from('notifications')
-          .update({ is_read: true })
-          .eq('user_id', userId)
-          .eq('related_resource_id', gameId)
-          .eq('type', 'game')
-      } catch (error) {
-        console.warn('Error marking notifications as read:', error)
-      }
-    }
-    await markNotificationsAsRead(supabase, user.id, gameId)
-
+    // Trả về kết quả đầy đủ
     return NextResponse.json({
       gameRound,
-      userBets: userBets || [],
-      rewards: rewards || [],
-      isWinner: hasWinningBets,
+      isWinner,
       totalWinAmount,
-      stats: stats || {
-        totalPlayers,
-        totalWinners,
-        totalBets: gameRound.total_bets || 0,
-        totalPayout: gameRound.total_payout || 0,
+      stats: {
+        totalPlayers: gameStats.totalPlayers || 0,
+        totalWinners: gameStats.totalWinners || 0,
+        totalBets: gameStats.totalBets || 0,
+        totalPayout: gameStats.totalPayout || 0,
       },
-      activeGames: activeGames || [],
+      rewards,
     })
   } catch (error: any) {
     console.error('Error fetching game results:', error)

@@ -1,5 +1,6 @@
-Tôi dự định sẽ xây dựng phần tính năng sau, dưới đây là danh sách cấu trúc thư mục của dự án, hãy giúp tôi lấy ra những folders, files liên quan đến phần tính năng cần làm, Luôn luôn giữ lại những Layout, Page , Share components. 
-Output tôi cần là 1 String bao gồm tên đường dẫn tất cả các files, folder, được cách nhau bởi dấu “,”. Những đường dẫn nào có chứa “(...)“ thì thay thế thành “*” (ví dụ: src/app/(dashboard)/profile/page.tsx -> src/app/*/profile/page.tsx) 
+Tôi dự định sẽ xây dựng phần tính năng sau, dưới đây là danh sách cấu trúc thư mục của dự án, hãy giúp tôi lấy ra những folders, files liên quan đến phần tính năng cần làm, Luôn luôn giữ lại những Layout, Page , Share components.
+
+Output tôi cần là 1 String bao gồm tên đường dẫn tất cả các files, folder, được cách nhau bởi dấu “,”. Những đường dẫn nào có chứa “(...)“ hoặc “[…]” thì thay thế thành “*” (ví dụ: src/app/(dashboard)/profile/page.tsx -> src/app/*/profile/page.tsx)
 
 ## 3. Phát triển hệ thống Game và Cá cược
 

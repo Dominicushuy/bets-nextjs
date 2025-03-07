@@ -1605,5 +1605,215 @@ FOR EACH ROW
 EXECUTE FUNCTION calculate_xp_on_game_completion();
 
 -- ================================================================
+-- Function để tạo lượt chơi mới tự động
+CREATE OR REPLACE FUNCTION auto_create_game_round(p_admin_id UUID DEFAULT NULL)
+RETURNS UUID AS $$
+DECLARE
+  v_game_id UUID;
+  v_admin_id UUID;
+BEGIN
+  -- Nếu không cung cấp admin ID, lấy ID đầu tiên từ profiles với role='admin'
+  IF p_admin_id IS NULL THEN
+    SELECT id INTO v_admin_id
+    FROM profiles
+    WHERE role = 'admin'
+    LIMIT 1;
+  ELSE
+    v_admin_id := p_admin_id;
+  END IF;
+  
+  -- Nếu không tìm thấy admin nào, ghi log và trả về lỗi
+  IF v_admin_id IS NULL THEN
+    INSERT INTO system_logs (
+      action_type,
+      description,
+      timestamp
+    ) VALUES (
+      'auto_game_creation_error',
+      'No admin user found for automatic game creation',
+      NOW()
+    );
+    
+    RAISE EXCEPTION 'No admin user found for automatic game creation';
+  END IF;
+  
+  -- Tạo game round mới
+  INSERT INTO game_rounds (
+    created_by,
+    start_time,
+    status,
+    created_at,
+    updated_at
+  ) VALUES (
+    v_admin_id,
+    NOW() + INTERVAL '5 minutes', -- Bắt đầu sau 5 phút
+    'pending',
+    NOW(),
+    NOW()
+  ) RETURNING id INTO v_game_id;
+  
+  -- Ghi log
+  INSERT INTO system_logs (
+    action_type,
+    description,
+    user_id,
+    timestamp
+  ) VALUES (
+    'auto_game_created',
+    'Game round ' || v_game_id || ' created automatically by system',
+    v_admin_id,
+    NOW()
+  );
+  
+  RETURN v_game_id;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in auto_create_game_round: %', SQLERRM;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function để tự động kích hoạt game round sau khi đến thời gian bắt đầu
+CREATE OR REPLACE FUNCTION auto_activate_game_rounds()
+RETURNS INTEGER AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_game RECORD;
+BEGIN
+  -- Lấy tất cả lượt chơi ở trạng thái 'pending' và thời gian bắt đầu đã đến hoặc trôi qua
+  FOR v_game IN
+    SELECT id
+    FROM game_rounds
+    WHERE status = 'pending' AND start_time <= NOW()
+  LOOP
+    -- Cập nhật trạng thái thành 'active'
+    UPDATE game_rounds
+    SET 
+      status = 'active',
+      updated_at = NOW()
+    WHERE id = v_game.id;
+    
+    -- Ghi log
+    INSERT INTO system_logs (
+      action_type,
+      description,
+      timestamp
+    ) VALUES (
+      'auto_game_activated',
+      'Game round ' || v_game.id || ' automatically activated by system',
+      NOW()
+    );
+    
+    v_count := v_count + 1;
+  END LOOP;
+  
+  RETURN v_count;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in auto_activate_game_rounds: %', SQLERRM;
+  RETURN 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function để tự động hoàn thành game rounds khi đã kết thúc sau 1 giờ
+CREATE OR REPLACE FUNCTION auto_complete_expired_game_rounds()
+RETURNS INTEGER AS $$
+DECLARE
+  v_count INTEGER := 0;
+  v_game RECORD;
+  v_admin_id UUID;
+  v_winning_number TEXT;
+BEGIN
+  -- Lấy ID admin đầu tiên
+  SELECT id INTO v_admin_id
+  FROM profiles
+  WHERE role = 'admin'
+  LIMIT 1;
+  
+  -- Nếu không tìm thấy admin nào, ghi log và trả về lỗi
+  IF v_admin_id IS NULL THEN
+    INSERT INTO system_logs (
+      action_type,
+      description,
+      timestamp
+    ) VALUES (
+      'auto_game_completion_error',
+      'No admin user found for automatic game completion',
+      NOW()
+    );
+    
+    RAISE EXCEPTION 'No admin user found for automatic game completion';
+  END IF;
+  
+  -- Lấy tất cả lượt chơi ở trạng thái 'active' và đã bắt đầu hơn 1 giờ trước
+  FOR v_game IN
+    SELECT id
+    FROM game_rounds
+    WHERE status = 'active' AND start_time <= (NOW() - INTERVAL '1 hour')
+  LOOP
+    -- Tạo số ngẫu nhiên làm số trúng
+    v_winning_number := (floor(random() * 90) + 10)::TEXT;
+    
+    -- Gọi function hoàn thành lượt chơi
+    PERFORM complete_game_round(v_game.id, v_winning_number, v_admin_id);
+    
+    -- Ghi log
+    INSERT INTO system_logs (
+      action_type,
+      description,
+      user_id,
+      timestamp
+    ) VALUES (
+      'auto_game_completed',
+      'Game round ' || v_game.id || ' automatically completed by system with winning number ' || v_winning_number,
+      v_admin_id,
+      NOW()
+    );
+    
+    v_count := v_count + 1;
+  END LOOP;
+  
+  RETURN v_count;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in auto_complete_expired_game_rounds: %', SQLERRM;
+  RETURN 0;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function để tạo lịch tự động tạo game rounds định kỳ
+CREATE OR REPLACE FUNCTION schedule_game_rounds()
+RETURNS TEXT AS $$
+DECLARE
+  v_admin_id UUID;
+  v_game_id UUID;
+BEGIN
+  -- Lấy admin ID đầu tiên
+  SELECT id INTO v_admin_id
+  FROM profiles
+  WHERE role = 'admin'
+  LIMIT 1;
+  
+  -- Tạo lượt chơi mới
+  v_game_id := auto_create_game_round(v_admin_id);
+  
+  -- Ghi log
+  INSERT INTO system_logs (
+    action_type,
+    description,
+    user_id,
+    timestamp
+  ) VALUES (
+    'scheduled_game_created',
+    'Scheduled game round ' || v_game_id || ' created',
+    v_admin_id,
+    NOW()
+  );
+  
+  RETURN 'Game round created with ID: ' || v_game_id;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error in schedule_game_rounds: %', SQLERRM;
+  RETURN 'Error creating scheduled game round';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ================================================================
 -- END OF FILE
 -- ================================================================

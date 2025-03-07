@@ -1,24 +1,15 @@
 // src/app/api/game-rounds/[id]/complete/route.ts
 import { createClient } from '@/lib/supabase/server'
-import { SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const gameId = params.id
+
   try {
-    const gameId = params.id
-    const { winningNumber } = await req.json()
-
-    if (!winningNumber) {
-      return NextResponse.json(
-        { error: 'Winning number is required' },
-        { status: 400 }
-      )
-    }
-
-    const supabase: SupabaseClient = createClient()
+    const supabase = createClient()
 
     // Lấy thông tin người dùng hiện tại
     const {
@@ -51,7 +42,18 @@ export async function POST(
       )
     }
 
-    // Gọi function để hoàn thành lượt chơi
+    // Lấy dữ liệu từ request body
+    const body = await req.json()
+    const { winningNumber } = body
+
+    if (!winningNumber) {
+      return NextResponse.json(
+        { error: 'Winning number is required' },
+        { status: 400 }
+      )
+    }
+
+    // Gọi function complete_game_round
     const { data, error } = await supabase.rpc('complete_game_round', {
       p_game_id: gameId,
       p_winning_number: winningNumber,
@@ -65,7 +67,19 @@ export async function POST(
       )
     }
 
-    return NextResponse.json({ data })
+    // Ghi log
+    await supabase.from('system_logs').insert({
+      action_type: 'game_completed',
+      description: `Game round ${gameId} completed by admin ${user.id} with winning number ${winningNumber}`,
+      user_id: user.id,
+      timestamp: new Date().toISOString(),
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: 'Game round completed successfully',
+      data,
+    })
   } catch (error: any) {
     console.error('Error completing game round:', error)
     return NextResponse.json(
