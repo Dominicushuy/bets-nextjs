@@ -7,6 +7,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils'
 import { Award, Coins, PlusCircle } from 'lucide-react'
+import { useConfetti } from '@/hooks/game-hooks'
 
 interface WinnerAnimationProps {
   show: boolean
@@ -24,60 +25,23 @@ export default function WinnerAnimation({
   const [step, setStep] = useState(1)
   const [animationComplete, setAnimationComplete] = useState(false)
 
+  // Sử dụng hook useConfetti
+  const { winnerConfettiEffect } = useConfetti()
+
   // Trigger confetti effect
   useEffect(() => {
     if (show && step === 1) {
-      // First wave of confetti
-      const duration = 3 * 1000
-      const end = Date.now() + duration
-
-      const interval = setInterval(() => {
-        if (Date.now() > end) {
-          clearInterval(interval)
-          return
-        }
-
-        confetti({
-          particleCount: 2,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'],
-        })
-
-        confetti({
-          particleCount: 2,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'],
-        })
-      }, 150)
+      // Sử dụng hook
+      const cleanup = winnerConfettiEffect()
 
       // Move to next step after 2 seconds
       setTimeout(() => {
         setStep(2)
       }, 2000)
-    }
-  }, [show, step])
 
-  useEffect(() => {
-    if (step === 2) {
-      // Second wave - big celebration
-      confetti({
-        particleCount: 200,
-        spread: 100,
-        origin: { y: 0.6 },
-        colors: ['#FFD700', '#FFA500', '#FF4500', '#FF6347', '#FF0000'],
-        shapes: ['circle', 'square'],
-      })
-
-      // Add a slight delay before marking animation as complete
-      setTimeout(() => {
-        setAnimationComplete(true)
-      }, 500)
+      return cleanup
     }
-  }, [step])
+  }, [show, step, winnerConfettiEffect])
 
   // Pulse animation for the winning number
   const pulseClass = 'animate-pulse transition-all duration-300'

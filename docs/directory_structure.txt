@@ -107,9 +107,13 @@ Directory structure:
         │       │   ├── route.ts
         │       │   ├── [id]/
         │       │   │   ├── route.ts
+        │       │   │   ├── bet-stats/
+        │       │   │   │   └── route.ts
         │       │   │   ├── bets/
         │       │   │   │   └── route.ts
         │       │   │   ├── complete/
+        │       │   │   │   └── route.ts
+        │       │   │   ├── my-bets/
         │       │   │   │   └── route.ts
         │       │   │   ├── number-distribution/
         │       │   │   │   └── route.ts

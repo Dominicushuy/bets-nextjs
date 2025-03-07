@@ -8,6 +8,7 @@ import {
   showSuccessToast,
   showErrorToast,
 } from '@/components/notifications/notification-helper'
+import confetti from 'canvas-confetti'
 
 // Keys cho React Query caching
 export const gameKeys = {
@@ -744,4 +745,153 @@ export function useBetStats(gameId: string) {
     enabled: !!gameId,
     staleTime: 30 * 1000, // 30 giây
   })
+}
+
+/**
+ * Hook để kiểm tra nhanh xem người dùng có thắng trong một lượt chơi cụ thể
+ */
+export function useWinCheck(gameId: string, userId: string) {
+  return useQuery({
+    queryKey: ['win-check', gameId, userId],
+    queryFn: async () => {
+      const { data: userBets, error } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('game_round_id', gameId)
+        .eq('user_id', userId)
+        .eq('is_winner', true)
+
+      if (error) throw error
+
+      const isWinner = userBets && userBets.length > 0
+      let totalWinAmount = 0
+
+      if (isWinner) {
+        totalWinAmount = userBets.reduce((sum, bet) => sum + bet.amount * 80, 0)
+      }
+
+      return {
+        isWinner,
+        totalWinAmount,
+        winningBets: userBets || [],
+      }
+    },
+    enabled: !!gameId && !!userId,
+  })
+}
+
+/**
+ * Hook để quản lý hiệu ứng confetti
+ */
+export function useConfetti() {
+  const smallConfettiEffect = (duration = 3000) => {
+    const end = Date.now() + duration
+
+    const interval = setInterval(() => {
+      if (Date.now() > end) {
+        clearInterval(interval)
+        return
+      }
+
+      confetti({
+        particleCount: 2,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.5 },
+        colors: ['#FFD700', '#FFA500', '#FF0000', '#90EE90', '#1E90FF'],
+      })
+
+      confetti({
+        particleCount: 2,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.5 },
+        colors: ['#FFD700', '#FFA500', '#FF0000', '#90EE90', '#1E90FF'],
+      })
+    }, 150)
+
+    return () => clearInterval(interval)
+  }
+
+  const bigConfettiEffect = () => {
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: [
+        '#FFD700',
+        '#FFA500',
+        '#FF4500',
+        '#FF6347',
+        '#FF0000',
+        '#90EE90',
+        '#1E90FF',
+      ],
+      shapes: ['circle', 'square'],
+      scalar: 1.2,
+    })
+  }
+
+  const winnerConfettiEffect = () => {
+    // Hiệu ứng nhỏ liên tục
+    const cleanup = smallConfettiEffect(3000)
+
+    // Hiệu ứng lớn sau 1 giây
+    setTimeout(() => {
+      bigConfettiEffect()
+    }, 1000)
+
+    // Hiệu ứng lớn thứ 2 sau 2 giây
+    setTimeout(() => {
+      bigConfettiEffect()
+    }, 2000)
+
+    return cleanup
+  }
+
+  const fireworksEffect = () => {
+    const duration = 5 * 1000
+    const animationEnd = Date.now() + duration
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 }
+
+    function randomInRange(min: number, max: number) {
+      return Math.random() * (max - min) + min
+    }
+
+    const interval = setInterval(() => {
+      const timeLeft = animationEnd - Date.now()
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval)
+      }
+
+      const particleCount = 50 * (timeLeft / duration)
+
+      // since particles fall down, start a bit higher than random
+      confetti(
+        Object.assign({}, defaults, {
+          particleCount,
+          origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+          colors: ['#FFD700', '#FF0000', '#FF4500'],
+        })
+      )
+
+      confetti(
+        Object.assign({}, defaults, {
+          particleCount,
+          origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+          colors: ['#00FF00', '#0000FF', '#FF00FF'],
+        })
+      )
+    }, 250)
+
+    return () => clearInterval(interval)
+  }
+
+  return {
+    smallConfettiEffect,
+    bigConfettiEffect,
+    winnerConfettiEffect,
+    fireworksEffect,
+  }
 }

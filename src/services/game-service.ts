@@ -289,3 +289,17 @@ export async function getBetStats(gameId: string) {
 
   return await response.json()
 }
+
+/**
+ * Lấy danh sách người thắng của một lượt chơi
+ */
+export async function getWinners(gameId: string) {
+  const response = await fetch(`/api/game-rounds/${gameId}/winners`)
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error || 'Error fetching winners')
+  }
+
+  return await response.json()
+}

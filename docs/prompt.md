@@ -2,30 +2,30 @@ Theo file `plan.md`, hãy giúp tôi tiếp tục phát triển dự án, hãy b
 
 ## 3. Phát triển hệ thống Game và Cá cược
 
-### 3.2 Hệ thống đặt cược (5 ngày)
+### 3.3 Xử lý kết quả và thông báo (4 ngày)
 
 #### Backend
-- [ ] Phát triển function place_bet xử lý đặt cược
-- [ ] Tạo trigger cập nhật số dư người dùng khi đặt cược
-- [ ] Thiết lập realtime subscriptions cho cập nhật đặt cược
-- [ ] Cài đặt RLS policies cho bets
+- [ ] Phát triển function complete_game_round xử lý hoàn thành game
+- [ ] Tạo function phân phối tiền thưởng cho người thắng
+- [ ] Thiết lập triggers cập nhật user_statistics khi game kết thúc
+- [ ] Cấu hình notifications khi có kết quả
 
 #### Frontend Components
-- [ ] Xây dựng BetForm component (chọn số và số tiền cược)
-- [ ] Tạo BetConfirmation component (xác nhận đặt cược)
-- [ ] Phát triển BetSuccess animation khi đặt cược thành công
-- [ ] Xây dựng BetList component (danh sách cược đã đặt)
+- [ ] Xây dựng GameResult component (hiển thị kết quả lượt chơi)
+- [ ] Tạo WinnerAnimation component (hiệu ứng khi thắng)
+- [ ] Phát triển GameResultDetails component (chi tiết kết quả)
+- [ ] Xây dựng GameResultNotification component (thông báo kết quả)
 
 #### API Routes
-- [ ] Tạo API route `/api/game-rounds/[id]/bets` (đặt cược mới)
-- [ ] Tạo API route `/api/game-rounds/[id]/my-bets` (lấy cược của user hiện tại)
-- [ ] Tạo API route `/api/game-rounds/[id]/bet-stats` (thống kê cược)
+- [ ] Tạo API route `/api/game-rounds/[id]/complete` (hoàn thành lượt chơi - admin)
+- [ ] Tạo API route `/api/game-rounds/[id]/results` (lấy kết quả)
+- [ ] Tạo API route `/api/game-rounds/[id]/winners` (danh sách người thắng)
 
 #### Services & Hooks
-- [ ] Phát triển BetService (placeBet, getUserBets)
-- [ ] Xây dựng hook usePlaceBet để xử lý đặt cược
-- [ ] Tạo hook useUserBets để quản lý cược của user
-- [ ] Phát triển hook useBetStats để lấy thống kê cược
+- [ ] Phát triển GameResultService (getResults, getWinners)
+- [ ] Xây dựng hook useGameResults để quản lý kết quả game
+- [ ] Tạo hook useWinCheck để kiểm tra người dùng có thắng không
+- [ ] Phát triển hook useConfetti cho hiệu ứng animation khi thắng
 
 *Lưu ý:
 - File `code.txt` tôi cung cấp đây bao gồm những phần code có liên quan tôi đang xây dựng từ trước. Những phần nào hiện đã phát triển nếu cần thì có thể cập nhật thêm. Nếu đã hoàn thiện thì bỏ qua, nếu thiếu thì tạo thêm và liên kết vào các Page, Layout có sẵn.
