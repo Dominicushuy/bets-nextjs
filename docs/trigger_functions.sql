@@ -1304,5 +1304,117 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ================================================================
+-- Cập nhật function để kiểm tra và cập nhật cấp độ người dùng
+CREATE OR REPLACE FUNCTION update_user_level()
+RETURNS TRIGGER AS $$
+DECLARE
+  next_level RECORD;
+BEGIN
+  -- Chỉ chạy khi experience_points bị thay đổi
+  IF NEW.experience_points = OLD.experience_points THEN
+    RETURN NEW;
+  END IF;
+
+  -- Tìm cấp độ phù hợp với điểm kinh nghiệm hiện tại
+  SELECT * INTO next_level
+  FROM user_levels
+  WHERE experience_required <= NEW.experience_points
+  ORDER BY level DESC
+  LIMIT 1;
+
+  -- Nếu tìm thấy cấp độ mới
+  IF FOUND AND next_level.level > NEW.level THEN
+    -- Cập nhật level
+    NEW.level := next_level.level;
+    
+    -- Tạo thông báo lên cấp
+    INSERT INTO notifications (
+      user_id,
+      title,
+      message,
+      type,
+      is_read,
+      created_at
+    ) VALUES (
+      NEW.id,
+      'Chúc mừng! Bạn đã lên cấp',
+      'Bạn đã đạt cấp độ ' || next_level.level || ': ' || next_level.name,
+      'system',
+      false,
+      NOW()
+    );
+    
+    -- Ghi log
+    INSERT INTO system_logs (
+      action_type,
+      description,
+      user_id,
+      timestamp
+    ) VALUES (
+      'level_up',
+      'User ' || NEW.id || ' leveled up to level ' || next_level.level,
+      NEW.id,
+      NOW()
+    );
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Tạo trigger cho việc cập nhật level
+DROP TRIGGER IF EXISTS on_experience_update ON profiles;
+CREATE TRIGGER on_experience_update
+BEFORE UPDATE OF experience_points ON profiles
+FOR EACH ROW
+EXECUTE FUNCTION update_user_level();
+
+-- Cải tiến function cập nhật thống kê người dùng để tính toán số may mắn
+CREATE OR REPLACE FUNCTION update_lucky_number()
+RETURNS TRIGGER AS $$
+DECLARE
+  lucky_numbers RECORD;
+BEGIN
+  -- Tìm số may mắn (số có tỷ lệ thắng cao nhất)
+  WITH number_stats AS (
+    SELECT 
+      selected_number,
+      COUNT(*) AS total_bets,
+      SUM(CASE WHEN is_winner THEN 1 ELSE 0 END) AS wins,
+      CASE 
+        WHEN COUNT(*) > 0 THEN
+          (SUM(CASE WHEN is_winner THEN 1 ELSE 0 END)::FLOAT / COUNT(*)::FLOAT) * 100
+        ELSE 0
+      END AS win_rate
+    FROM bets
+    WHERE user_id = NEW.user_id
+    GROUP BY selected_number
+    HAVING COUNT(*) >= 3 -- Ít nhất 3 lần đặt cược với số này
+    ORDER BY win_rate DESC, wins DESC
+    LIMIT 1
+  )
+  SELECT * INTO lucky_numbers FROM number_stats;
+
+  -- Cập nhật số may mắn nếu tìm thấy
+  IF FOUND THEN
+    UPDATE user_statistics
+    SET 
+      lucky_number = lucky_numbers.selected_number,
+      last_updated = NOW()
+    WHERE user_id = NEW.user_id;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Tạo trigger cho việc cập nhật số may mắn
+DROP TRIGGER IF EXISTS on_bet_update_lucky_number ON bets;
+CREATE TRIGGER on_bet_update_lucky_number
+AFTER INSERT OR UPDATE OF is_winner ON bets
+FOR EACH ROW
+EXECUTE FUNCTION update_lucky_number();
+
+-- ================================================================
 -- END OF FILE
 -- ================================================================

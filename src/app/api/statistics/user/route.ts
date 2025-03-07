@@ -1,88 +1,107 @@
 // src/app/api/statistics/user/route.ts
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
-  const supabase = createRouteHandlerClient({ cookies })
-
-  // Lấy thông tin người dùng đang đăng nhập
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+export async function GET(req: NextRequest) {
   try {
-    // Lấy thông tin thống kê người dùng
-    const { data: statistics, error: statsError } = await supabase
+    const supabase = createClient()
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Lấy tham số từ query
+    const url = new URL(req.url)
+    const period = url.searchParams.get('period') || 'all'
+
+    // Kiểm tra period hợp lệ
+    if (!['week', 'month', 'all'].includes(period)) {
+      return NextResponse.json(
+        { error: 'Invalid period. Must be week, month, or all' },
+        { status: 400 }
+      )
+    }
+
+    // Lấy thống kê từ bảng user_statistics
+    const { data: stats, error: statsError } = await supabase
       .from('user_statistics')
       .select('*')
       .eq('user_id', user.id)
       .single()
 
-    if (statsError && statsError.code !== 'PGRST116') {
-      throw statsError
+    if (statsError) {
+      return NextResponse.json({ error: statsError.message }, { status: 500 })
     }
 
-    // Nếu chưa có thống kê, tạo thống kê mới
-    if (!statistics) {
-      // Lấy thông tin tổng số lượt chơi
-      const { count: totalGames } = await supabase
+    // Chỉ lấy dữ liệu đặt cược gần đây nếu period không phải 'all'
+    if (period !== 'all') {
+      // Xác định thời gian dựa trên period
+      const days = period === 'week' ? 7 : 30
+      const timeConstraint = new Date()
+      timeConstraint.setDate(timeConstraint.getDate() - days)
+
+      // Lấy dữ liệu đặt cược trong khoảng thời gian
+      const { data: recentBets, error: recentBetsError } = await supabase
         .from('bets')
-        .select('*', { count: 'exact', head: true })
+        .select('id, amount, is_winner')
         .eq('user_id', user.id)
+        .gte('created_at', timeConstraint.toISOString())
 
-      // Lấy thông tin số lượt thắng
-      const { count: gamesWon } = await supabase
-        .from('bets')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_winner', true)
-
-      // Lấy thông tin bet lớn nhất đã thắng
-      const { data: biggestWin } = await supabase
-        .from('bets')
-        .select('amount')
-        .eq('user_id', user.id)
-        .eq('is_winner', true)
-        .order('amount', { ascending: false })
-        .limit(1)
-
-      // Tính toán số may mắn
-      const { data: numberCounts } = await supabase
-        .from('bets')
-        .select('selected_number, count(*)')
-        .eq('user_id', user.id)
-        .eq('is_winner', true)
-        .group('selected_number')
-        .order('count', { ascending: false })
-        .limit(1)
-
-      const winRate = totalGames ? ((gamesWon || 0) / totalGames) * 100 : 0
-      const biggestWinAmount = biggestWin?.[0]?.amount || 0
-      const luckyNumber = numberCounts?.[0]?.selected_number || null
-
-      // Tạo thống kê mới
-      const defaultStats = {
-        user_id: user.id,
-        total_games_played: totalGames || 0,
-        games_won: gamesWon || 0,
-        win_rate: winRate,
-        biggest_win: biggestWinAmount,
-        lucky_number: luckyNumber,
-        total_rewards: 0,
-        last_updated: new Date().toISOString(),
+      if (recentBetsError) {
+        return NextResponse.json(
+          { error: recentBetsError.message },
+          { status: 500 }
+        )
       }
 
-      return NextResponse.json({ data: defaultStats })
+      // Tính toán thống kê
+      const totalBets = recentBets?.length || 0
+      const winningBets = recentBets?.filter((bet) => bet.is_winner).length || 0
+      const periodWinRate = totalBets > 0 ? (winningBets / totalBets) * 100 : 0
+      const recentTotalAmount =
+        recentBets?.reduce((sum, bet) => sum + (bet.amount || 0), 0) || 0
+
+      return NextResponse.json({
+        allTime: {
+          gamesPlayed: stats.total_games_played,
+          gamesWon: stats.games_won,
+          winRate: stats.win_rate,
+          biggestWin: stats.biggest_win,
+          luckyNumber: stats.lucky_number,
+          totalRewards: stats.total_rewards,
+        },
+        recent: {
+          period,
+          gamesPlayed: totalBets,
+          gamesWon: winningBets,
+          winRate: periodWinRate,
+          totalAmount: recentTotalAmount,
+        },
+      })
     }
 
-    // Nếu đã có thống kê, trả về thông tin thống kê
-    return NextResponse.json({ data: statistics })
+    // Trả về chỉ thống kê tổng hợp
+    return NextResponse.json({
+      allTime: {
+        gamesPlayed: stats.total_games_played,
+        gamesWon: stats.games_won,
+        winRate: stats.win_rate,
+        biggestWin: stats.biggest_win,
+        luckyNumber: stats.lucky_number,
+        totalRewards: stats.total_rewards,
+      },
+      recent: {
+        period: 'all',
+        gamesPlayed: stats.total_games_played,
+        gamesWon: stats.games_won,
+        winRate: stats.win_rate,
+        totalAmount: stats.total_games_played > 0 ? stats.biggest_win : 0,
+      },
+    })
   } catch (error: any) {
     console.error('Error fetching user statistics:', error)
     return NextResponse.json(
